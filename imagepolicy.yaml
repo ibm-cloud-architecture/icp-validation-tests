@@ -1,0 +1,14 @@
+apiVersion: securityenforcement.admission.cloud.ibm.com/v1beta1
+kind: ImagePolicy
+metadata:
+  name: image-policy
+spec:
+  repositories:
+    - name: docker.io/*
+      policy: null
+    - name: k8s.gcr.io/*
+      policy: null
+    - name: gcr.io/*
+      policy: null 
+    - name: ibmcom/*
+      policy: null

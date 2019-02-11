@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: busybox-deploy-snat
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: busybox-snat
+  template:
+    metadata:
+      labels:
+        app: busybox-snat
+    spec:
+      containers:
+        - name: busybox-deploy-snat
+          image: busybox
+          command:
+            - sleep
+            - "3600"
