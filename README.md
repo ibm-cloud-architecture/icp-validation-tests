@@ -1,7 +1,5 @@
 
-[![Build Status](https://travis.ibm.com/IBMPrivateCloud/icp-sert-bats.svg?token=9eXqaUMAsuqFszj7yyKB&branch=master)](https://travis.ibm.com/IBMPrivateCloud/icp-sert-bats)
-
-# Integration Tests
+# ICP Validation tests
 
 Integration tests provide end-to-end testing of ICP.
 
@@ -15,106 +13,16 @@ Integration tests on the other hand are meant to test a specific feature end
 to end.
 
 Integration tests are written in *bash* using the
-[bats](https://github.com/sstephenson/bats) framework.
-
-and the License info of *bats* was: https://github.com/sstephenson/bats/blob/master/LICENSE
-
-How to install *bats*:
-```
-$ git clone https://github.com/hchenxa/bats.git
-$ cd bats
-$ ./install.sh /usr/local
-```
+[bats](https://github.com/bats-core/bats-core) framework.
 
 
-## Running integration tests
-There are two method to run the tests:
-
-A. you can run integration tests directly on your host, for example, ICP master:
+## Running tests
 
 ```
-$ git clone git@github.ibm.com:IBMPrivateCloud/icp-sert-bats.git
-$ cd icp-sert-bats/
+$ git clone git@github.ibm.com:IBMPrivateCloud/icp-validation.git
+$ cd icp-validation/
 $ ./run.sh
 ```
-
-This will run all cases.
-
-And the result like below:
-<img src="https://github.ibm.com/IBMPrivateCloud/icp-infrastructure-bats/blob/master/gif/all_cases.gif"/>
-Note: testui cases can't run directly on your ppc64le and s390x platform.
-
-B. you can run the tests remotely:
-
- 1). Create your x86_64 machine which can be communicate with ICP cluster.
-
- 2). Install `kubectl` command in this machine, Expose the ACCESS_IP and ROUTER_HTTPS_PORT to point to your ICP cluster access IP:port
-
- 3). ` git clone git@github.ibm.com:IBMPrivateCloud/icp-sert-bats.git` in the x86_64 machine, now support x86_64, ppc64le and s390x platform.
-
-    if your cluster is x86_64 cluster:
-
-       run ./run.sh in x86 machine.
-
-    if your cluster is ppc64le cluster:
-
-       run ARCH=ppc64le ./run.sh in x86 machine
-
-    if your cluster is s390x cluster:
-
-      run ARCH=s390x ./run.sh in x86 machine
-
-This tool have some options during run the tests:
-
-a. And you can run part of cases by:
-```
-$ run.sh --cases "case1,case2,case3"
-```
-
-This will run the cases case1,case2,case3 and the result like below:
-<img src="https://github.ibm.com/IBMPrivateCloud/icp-infrastructure-bats/blob/master/gif/cases.gif"/>
-
-
-b. Also you can run the cases group by:
-```
-$ run.sh --groups "group1,group2,group3"
-```
-
-this will run the cases under group group1,group2,group3 and the result like below:
-<img src="https://github.ibm.com/IBMPrivateCloud/icp-infrastructure-bats/blob/master/gif/groups_cases.gif"/>
-
-
-In order to do that, you will need to setup a full development environment plus
-[bats](https://github.com/sstephenson/bats#installing-bats-from-source)
-
-
-c. Run UI cases:
-
- 1. Run UI cases by group:
-
- Before running scripts, set envirnoment variable `DISPLAY=:99`
-
- ```
- $ export DISPLAY=:99
- $ ./run.sh -g testui
- ```
-d. Skip a group to run test.
-
-```
-$ ./run.sh -ng testui
-
-```
-
-e. Expose the test result use xml format:
-
-The test framework support to expose the test result using xml format which used to publised on allure.
-before running the scrips, set the environment variable `OUTPUT_FORMAT=junit`.
-
-After the cases finished, the report will placed under ./report.
-
-Execute the `allure generate report` to generate the allure report. to get the allure, please download from https://github.com/allure-framework/allure2
-
-Then you can view the allure report by `allure open ./allure-report` and this command will start up a http service.
 
 ## Prerequisites
 
@@ -171,13 +79,11 @@ load helpers
     [[ "$?" -eq 0 ]]
 }
 ```
-
+## Functions available to tests
 
 ## Variables available to all tests
 
 There are several global variables you can use to introspect on Bats tests
-
-
 
 ### BATS Special
 - `$BATS_TEST_FILENAME` is the fully expanded path to the Bats test file.
@@ -188,7 +94,7 @@ There are several global variables you can use to introspect on Bats tests
 - `$BATS_TEST_NUMBER` is the (1-based) index of the current test case in the test file.
 - `$BATS_TMPDIR` is the location to a directory that may be used to store temporary files.
 
-### ICP-SERT-BATS Special
+### ICP-VALIDATION Special
 - `$NAMESPACE` is the namespace to run tests against / in
 - `$ARCH` is the processor architecture targeted for the tests
 
