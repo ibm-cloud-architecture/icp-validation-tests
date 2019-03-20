@@ -19,7 +19,7 @@ Integration tests are written in *bash* using the
 ## Running tests
 
 ```
-$ git clone git@github.ibm.com:IBMPrivateCloud/icp-validation.git
+$ git clone https://github.com/ibm-cloud-architecture/icp-validation-tests.git
 $ cd icp-validation/
 $ ./run.sh
 ```
@@ -67,11 +67,11 @@ export PASSWORD="MyVerySafePassword"
 
 ## Writing integration tests
 
-[helper functions](https://github.ibm.com/IBMPrivateCloud/icp-infrastructure-bats/blob/master/helpers.bash)
+[helper functions](https://github.com/ibm-cloud-architecture/icp-validation-tests/blob/master/libs/endtoend-helper.bash)
 
 ```
 # This will load the helpers.
-load helpers
+load endtoend-helper
 
 @test "this is a simple test" {
     # this was the simple test:
