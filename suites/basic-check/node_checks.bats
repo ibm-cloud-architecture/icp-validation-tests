@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+load ${APP_ROOT}/libs/sert-compat.bash
 
 @test "Cluster nodes | All nodes ready" {
   nodes_notready="$($KUBECTL  get nodes --no-headers | grep -i NotReady | wc -l)"

@@ -1,4 +1,11 @@
+#!/usr/bin/env bash
+# Helper functions for bats tests that perform sequential tests
+#
+# Introduces the following concepts
+# 
+#
 
+########
 function setup() {
   tmp=${BATS_TMPDIR}/${BATS_TEST_DIRNAME##*/}${BATS_TEST_FILENAME##*/}
   if [[ ${BATS_TEST_NUMBER} -eq 1 ]]; then

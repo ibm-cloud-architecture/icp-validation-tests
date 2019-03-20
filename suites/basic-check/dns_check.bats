@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 # This will load the helpers.
-load ../../helpers
+load ${APP_ROOT}/libs/sert-compat.bash
 
 @test "Kube DNS | Check the DNS Pod status" {
   # Check all pods satus

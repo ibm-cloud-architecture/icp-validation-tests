@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-
+load ${APP_ROOT}/libs/sert-compat.bash
 
 @test "Pods status | All pods status check" {
     # Check all pods satus

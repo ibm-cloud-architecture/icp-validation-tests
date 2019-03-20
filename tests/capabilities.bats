@@ -4,9 +4,10 @@ load helpers
 
 source ${APP_ROOT}/run.sh
 
+export TEST_SUITE_ROOT=${BATS_TEST_DIRNAME}/mocks
 
 @test "${part} | empty capabilities when no capabilities declared" {
-  bats_files=("${BATS_TEST_DIRNAME}/mocks/group1/g1-test1.bats" "${BATS_TEST_DIRNAME}/mocks/group1/g1-test2.bats")
+  bats_files=("${TEST_SUITE_ROOT}/group1/g1-test1.bats" "${TEST_SUITE_ROOT}/group1/g1-test2.bats")
 
   get_desired_capabilities
 
@@ -14,7 +15,7 @@ source ${APP_ROOT}/run.sh
 }
 
 @test "${part} | detect capabilities" {
-  export bats_files=("${BATS_TEST_DIRNAME}/mocks/capabilities/kubectl.bats")
+  export bats_files=("${TEST_SUITE_ROOT}/capabilities/kubectl.bats")
 
   get_desired_capabilities
 

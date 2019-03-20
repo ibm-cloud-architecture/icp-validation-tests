@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 
 # This will load the helpers.
-load ../../helpers
+load ${APP_ROOT}/libs/sert-compat.bash
 
 @test "kube-system | All pods healthy" {
   pods_status="$($KUBECTL -n kube-system get pods --no-headers | awk '!/Running/ && !/Completed/' | wc -l)"

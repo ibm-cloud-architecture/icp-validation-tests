@@ -6,7 +6,10 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 fi
 
 # Load global default settings
-#source ${APP_ROOT}/defaults.sh
+source ${APP_ROOT}/defaults.sh
+
+# Load helper funktions
+source ${APP_ROOT}/libs/setup-tools.bash
 
 # Global variables that will be populated for test runs
 declare -a test_groups
@@ -33,6 +36,9 @@ function print_help() {
 function parse_groups() {
   groups=$1
   while read -d ',' group ; do
+    if [[ ! -d ${TEST_SUITE_ROOT}/${group} ]]; then
+      exit_error "Could not find group ${group}"
+    fi
     test_groups+=( $group )
   done < <(echo ${groups},)
   export test_groups
@@ -79,8 +85,8 @@ function get_cases() {
 }
 
 # List available cases
-function list_cases {
-  ls -1
+function list_cases() {
+  basename $(ls -1 ${TEST_SUITE_ROOT}/*/*.bats)
 }
 
 ####
@@ -131,6 +137,15 @@ function prepare_environment() {
     get_desired_capabilities
   fi
 
+  # Ensure the desired capabilities are available and configured
+  if [[ ! -z ${desired_capabilities} ]]; then
+    for capability in "${desired_capabilities[@]}"; do
+      if [[ "$(type -t setup_${capability})" == "function" ]]; then
+        # All these functions are defined in setup-tools.bash
+        setup_${capability}
+      fi
+    done
+  fi
 }
 
 function get_desired_capabilities() {
@@ -156,6 +171,11 @@ function get_desired_capabilities() {
 
 }
 
+function exit_error() {
+  echo "${1}"
+  exit 1
+}
+
 ####
 # Functions used when running $0 from the command line
 ####
@@ -177,16 +197,42 @@ function parse_args() {
 
         #export GROUP_RUNS="true"
         # run_bats
+        #
+        # parse_groups capabilities
+        #
+        # echo "number ${#test_groups[@]}"
+        # echo ${test_groups[@]}
+        # get_cases
+        # get_desired_capabilities
+        # echo $desired_capabilities
+        #
+        function which() {
+          return 1
+        }
 
-        parse_groups capabilities
+        function curl() {
+          if [[ "$*" =~ "$SERVER" ]]; then
+            return 1
+          else
+             return 1
+          fi
+        }
 
-        echo "number ${#test_groups[@]}"
-        echo ${test_groups[@]}
-        get_cases
-        get_desired_capabilities
-        echo $desired_capabilities
+        function chmod() {
+          return 0
+        }
 
-        echo $?
+        export -f which
+        export -f curl
+
+        export SERVER="mymockserver"
+        export USERNAME="mymockuser"
+        export PASSWORD="mymockpass"
+
+        #set -x
+        setup_kubectl
+        #set +x
+        # echo $?
         exit 0
         ;;
 
@@ -215,6 +261,13 @@ function parse_args() {
         exit ${EXIT_STATUS}
         ;;
       '--cases'|-c)
+        if [[ "$2" == "-l" ]]; then
+          list_cases
+          exit 0
+        elif [[ "$2" == "" ]]; then
+          echo "You must specify list of cases to run"
+          print_help
+        fi
 
         parse_cases $2
         get_groups
@@ -253,7 +306,5 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     exit 0
   else
     parse_args "$@"
-    # If we have something to run
-      # start run
   fi
 fi
