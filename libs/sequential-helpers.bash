@@ -1,11 +1,6 @@
-#!/usr/bin/env bash
-# Helper functions for bats tests that perform sequential tests
-#
-# Introduces the following concepts
-# 
-#
+ENV_READY_SLEEP=${ENV_READY_SLEEP:-5}
+ENV_READY_TIMEOUT=${ENV_READY_TIMEOUT:-120}
 
-########
 function setup() {
   tmp=${BATS_TMPDIR}/${BATS_TEST_DIRNAME##*/}${BATS_TEST_FILENAME##*/}
   if [[ ${BATS_TEST_NUMBER} -eq 1 ]]; then
@@ -15,12 +10,17 @@ function setup() {
       if ! applicable ; then
         # Set applicability skip
         touch ${tmp}-applicable.skip
+        skip "Not applicable in this environment"
       fi
     fi
 
     # Prepare environment for test cases
     if type -t create_environment >/dev/null ; then
       if ! create_environment ; then
+        if [[ -z ${ON_SETUP_FAIL} ]]; then
+          # The default behavior will be to skip
+          export ON_SETUP_FAIL="skip"
+        fi
         # The setup failed.
         case "${ON_SETUP_FAIL}" in
           skip)
@@ -31,6 +31,12 @@ function setup() {
             # Fail all tests in this case
             touch ${tmp}-setup.fail
             ;;
+          failfirst)
+            # Skip all subsequent tests in this case
+            touch ${tmp}-setup.skip
+            echo "Environment setup failed" >&2
+            return 1
+            ;;
           *)
             echo "Unknown value '${ON_SETUP_FAIL}' for ON_SETUP_FAIL" > ${tmp}-system.fail
             return 1
@@ -38,6 +44,43 @@ function setup() {
         esac
       fi
     fi
+
+    # If defined wait for environment to become ready
+    if type -t environment_ready >/dev/null ; then
+      _timeout=${ENV_READY_TIMEOUT}
+      _attempt=1
+      while ! environment_ready && [[ $_timeout -gt $(( $_attempt * ${ENV_READY_SLEEP} )) ]]; do
+        sleep ${ENV_READY_SLEEP}
+        _attempt=$(($_attempt+1))
+      done
+
+      if [[ ! $_timeout -lt $(( $_attempt * ${ENV_READY_SLEEP} )) ]]; then
+        # We timed out waiting for environment to become ready. Skip subsequent tests
+        case "${ON_SETUP_FAIL}" in
+          skip)
+            # Skip all tests in this case
+            touch ${tmp}-setup.skip
+            ;;
+          fail)
+            # Fail all tests in this case
+            touch ${tmp}-setup.fail
+            ;;
+          failfirst)
+            # Skip all subsequent tests in this case
+            touch ${tmp}-setup.skip
+            echo "Timed out waiting for environment to become ready" >&2
+            return 1
+            ;;
+          *)
+            echo "Unknown value '${ON_SETUP_FAIL}' for ON_SETUP_FAIL" > ${tmp}-system.fail
+            return 1
+            ;;
+        esac
+
+      fi
+
+    fi
+
   fi
 
 
