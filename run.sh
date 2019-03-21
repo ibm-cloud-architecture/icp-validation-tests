@@ -249,8 +249,8 @@ function parse_args() {
           list_groups
           exit 0
         elif [[ "$2" == "" ]]; then
-          echo "You must specify list of groups to run"
           print_help
+          exit_error "You must specify list of groups to run"
         fi
 
         # Run the test based on the groups we've been given
@@ -265,8 +265,8 @@ function parse_args() {
           list_cases
           exit 0
         elif [[ "$2" == "" ]]; then
-          echo "You must specify list of cases to run"
           print_help
+          exit_error "You must specify list of cases to run"
         fi
 
         parse_cases $2
@@ -277,10 +277,10 @@ function parse_args() {
         ;;
       '--ignore_groups'|-ng)
           # here we will probably do get_all then deduct ignored
-          run_bats 'ignore_groups' $2
+          exit_error "Not implemented yet"
           ;;
       '--ignore_cases'|-nc)
-          run_bats 'ignore_cases' $2
+          exit_error "Not implemented yet"
           ;;
       '--help'|-h)
         print_help
