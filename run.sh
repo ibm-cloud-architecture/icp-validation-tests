@@ -176,6 +176,15 @@ function exit_error() {
   exit 1
 }
 
+function wrapper_cleanup() {
+  # Cleanup the global temp dir, after a quick sanity check
+  if [[ ! "${GLOBAL_TMPDIR}" =~ ^(/.*/.+).* ]]; then
+    echo # WARNING: GLOBAL_TMPDIR ${GLOBAL_TMPDIR} does not seem safe to delete. Will not delete
+  else
+    rm -rf ${GLOBAL_TMPDIR}
+  fi
+}
+
 ####
 # Functions used when running $0 from the command line
 ####
@@ -305,6 +314,22 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     print_help
     exit 0
   else
+
+    # Create a global temp dir that persists between bats runs
+    if type -p mktemp >/dev/null; then
+      GLOBAL_TMPDIR=$(mktemp -d)
+    fi
+    if [[ -z ${GLOBAL_TMPDIR} ]]; then
+      if [[ -z "$TMPDIR" ]]; then
+        export GLOBAL_TMPDIR="/tmp/icpvalidation-$$"
+      else
+        export GLOBAL_TMPDIR="${TMPDIR%/}/icpvalidation-$$"
+      fi
+    fi
+    mkdir -p ${GLOBAL_TMPDIR}
+    trap 'wrapper_cleanup' EXIT
+
+    # Parse arguments and execute relevant actions
     parse_args "$@"
   fi
 fi
