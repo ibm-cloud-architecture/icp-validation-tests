@@ -35,10 +35,11 @@ source ${APP_ROOT}/run.sh
 }
 
 @test "${part} | list available groups" {
-  skip "not implemented yet"
+
+  export TEST_SUITE_ROOT=${BATS_TEST_DIRNAME}/mocks
 
   run list_groups
 
-  [[ ${#lines[@]} -eq $(ls ${TEST_SUITE_ROOT} | wc -l) ]]
+  [[ ${output} =~ "group2" ]]
 
 }
