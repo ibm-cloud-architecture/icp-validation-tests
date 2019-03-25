@@ -10,11 +10,12 @@ source ${APP_ROOT}/run.sh
 }
 
 @test "${part} | parse comma separated groups" {
-  parse_groups foo,bar,baz
+  export TEST_SUITE_ROOT=${BATS_TEST_DIRNAME}/mocks
+  parse_groups group1,group2,group3
   [[ ${#test_groups[@]} -eq 3 ]]
-  [[ ${test_groups[0]} == "foo" ]]
-  [[ ${test_groups[1]} == "bar" ]]
-  [[ ${test_groups[2]} == "baz" ]]
+  [[ ${test_groups[0]} == "group1" ]]
+  [[ ${test_groups[1]} == "group2" ]]
+  [[ ${test_groups[2]} == "group3" ]]
 }
 
 @test "${part} | get groups from cases" {
