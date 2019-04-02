@@ -67,7 +67,25 @@ export PASSWORD="MyVerySafePassword"
 
 ## Writing integration tests
 
-[helper functions](https://github.com/ibm-cloud-architecture/icp-validation-tests/blob/master/libs/endtoend-helper.bash)
+
+There's a number of helper functions available.
+
+[sequential helpers](https://github.com/ibm-cloud-architecture/icp-validation-tests/blob/master/libs/sequential-helpers.bash)
+This introduces some useful functions for tests that have dependencies on environment (i.e. istio deployed), successful setup of a prerequisite environment (i.e. successful deployment of application to test), and successful execution of previous tests in the same bats file.
+
+_applicable_
+
+This function is used to determine if the tests in the current file should run. If `applicable` returns 1 all the tests in the current bats file will be skipped with the message `Not applicable in this environment`
+Example use
+```
+#!/usr/bin/env bats
+
+load ${APP_ROOT}/libs/sequential-helpers.bash
+
+function applicable() {
+  n=$(kubectl -n kube-system get pods | grep )
+}
+```
 
 ```
 # This will load the helpers.
@@ -111,3 +129,15 @@ There are several global variables you can use to introspect on Bats tests
 - `$ICPVERSION_PATCH` is the ICP platform Patch version -- i.e. *0* in 2.1.0.3
 - `$ICPVERSION_REV` is the ICP platform Revision version (if available) -- i.e. *3* in 2.1.0.3
 - `$ICPVERSION_STR` is the ICP platform full version string
+- `$API_VERSIONS` array of kubernetes api versions 
+
+
+### Standard images to use
+
+Since the test suite is expected to be run on both airgapped and non-airgapped environments,
+it is desirable to limit the amount of images that are used, so as to limit the amount of
+images that will need to be added to air gapped environments as a prerequisite to running the tests.
+
+Suggested images to use:
+- `nginx` -- where network functionality is required, i.e. requiring something to listen to a port
+- `busybox` -- small lightweight image with most useful tools available

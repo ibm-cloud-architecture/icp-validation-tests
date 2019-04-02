@@ -11,8 +11,18 @@ export BATS_OUTPUT=${BATS_OUTPUT:-pretty}
 export TEST_SUITE_ROOT=${TEST_SUITE_ROOT:-${APP_ROOT}/suites}
 
 # Setup even if not explicitly declared in *.bats cases
-export IMPLICIT_CAPABILITIES=(  )
+export IMPLICIT_CAPABILITIES=( "kubectl" )
 
 # If disabled the assumption is that everything
 # kubectl, namespace, etc is setup beforehand
 export PREINSTALL_TEST_PREREQS=${PREINSTALL_TEST_PREREQS:-true}
+
+#####
+# Kubernetes and cluster defaults
+
+# Default namespace to run test deployments in
+export NAMESPACE=${NAMESPACE:-ivt}
+
+export KUBE_APISERVER_PORT=${KUBE_APISERVER_PORT:-8001}
+
+export SERVER=${SERVER}

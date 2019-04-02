@@ -4,12 +4,28 @@
 # This is used as a helper for run.sh
 ########
 
+#####
+# General helper functions
+#####
+function b64decode() {
+  # Detect if can use base64 --decode or base64 -d
+  if echo foobar | base64 --decode >/dev/null &>/dev/null ; then
+    decode="base64 --decode"
+  else
+    # Assume busybox syntax will work for now
+    decode="base64 -d"
+  fi
+
+  echo $($decode $1)
+}
 
 #####
 # kubectl specific function
 #####
 
 function setup_kubectl() {
+  source ${APP_ROOT}/libs/icp-kube-functions.bash
+
   # Ensure that kubectl binary is available
   if ! find_or_download_kubectl; then
     echo "# Unable to locate or download kubectl binary"
@@ -23,7 +39,10 @@ function setup_kubectl() {
   fi
 
   # Populate ICP and Kubernetes specific global variables
-
+  if ! populate_global_vars; then
+    echo "# Unable to get version information to populate global vars"
+    return 1
+  fi
 }
 
 
@@ -87,41 +106,38 @@ function find_or_download_kubectl() {
   return 1
 }
 
-# TODO Move this function
-function b64decode() {
-  # Detect if can use base64 --decode or base64 -d
-  if echo foobar | base64 --decode >/dev/null &>/dev/null ; then
-    decode="base64 --decode"
-  else
-    # Assume busybox syntax will work for now
-    decode="base64 -d"
-  fi
-
-  echo $($decode $1)
-}
-
 function config_kube_credentials() {
   # We will create our own kube config file where we control our own contexts
-
-
   if [[ ! -z ${USERNAME} && ! -z ${PASSWORD} && ! -z ${SERVER} ]]; then
     # Use this
     echo "# Using provided credentials"
-  elif kubectl api-version &>/dev/null; then
+  elif kubectl api-versions &>/dev/null; then
     # If we have authenticated kubectl we'll use that to attempt to get credentials
-    export USERNAME=$(kubectl get secrets platform-auth-idp-credentials -n kube-system -o jsonpath="{.data.admin_username}" | b64decode)
-    export PASSWORD=$(kubectl get secrets platform-auth-idp-credentials -n kube-system -o jsonpath="{.data.admin_password}" | b64decode)
+    read -r ubase pbase <<<$(kubectl get secrets platform-auth-idp-credentials -n kube-system -o jsonpath="{.data.admin_username} {.data.admin_password}")
+
+    export USERNAME=$(echo ${ubase} | b64decode)
+    export PASSWORD=$(echo ${pbase} | b64decode)
+    export SERVER=$(kubectl -n kube-public get configmap ibmcloud-cluster-info -o jsonpath='{.data.cluster_address}')
   fi
 
-  # Now get authentication token
-  token=$(curl -s -k -H "Content-Type: application/x-www-form-urlencoded;charset=UTF-8" -d "grant_type=password&username=${USERNAME}&password=${PASSWORD}&scope=openid" https://${SERVER}:${ROUTER_HTTPS_PORT}/idprovider/v1/auth/identitytoken --insecure | jq .id_token | awk  -F '"' '{print $2}')
-
   # Create or update our kubeconfig
-  kube="kubectl --kubeconfig=${APP_ROOT}/bin/.kubeconfig"
-  $kube config set-cluster ${CLUSTERNAME} --server=https://$SERVER:$KUBE_APISERVER_PORT --insecure-skip-tls-verify=true
-  $kube config set-context ${CLUSTERNAME} --cluster=$CLUSTERNAME
-  $kube config set-credentials $USERNAME --token=$token
-  $kube config set-context ${CLUSTERNAME} --user=$USERNAME --namespace=${NAMESPACE}
-  $kube config use-context ${CLUSTERNAME}
 
+  auth_and_create_context ${USERNAME} ${PASSWORD} basecontext
+
+}
+
+function setup_namespace() {
+  # Setup the namespace as appropriate
+  if ! kubectl create namespace ${NAMESPACE} ; then
+    # Namespace probably already existed. Not to worry
+    echo "# Warning: Problems creating namespace. It may already have existed."
+  fi
+  echo "API Versions ${API_VERSIONS[@]}"
+  # Ensure admission policy if needed
+  if [[ "${API_VERSIONS[@]}" =~ "securityenforcement.admission" ]]; then
+    echo "We need imagepolicy"
+    kubectl -n ${NAMESPACE} apply -f ${APP_ROOT}/imagepolicy.yaml
+  fi
+
+  return 0
 }

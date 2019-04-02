@@ -133,7 +133,7 @@ function run_bats() {
 ####
 
 function prepare_environment() {
-  if [[ "${PREINSTALL_PREREQS}" == "true" ]]; then
+  if [[ "${PREINSTALL_TEST_PREREQS}" == "true" ]]; then
     get_desired_capabilities
   fi
 
