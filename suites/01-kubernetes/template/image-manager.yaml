@@ -1,0 +1,27 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: http-svc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: http-svc
+  template:
+    metadata:
+      labels:
+        app: http-svc
+    spec:
+      containers:
+      - name: http-svc
+        image: nginx:1.14.2-alpine
+        ports:
+        - containerPort: 80
+        volumeMounts:
+        - mountPath: /docker-cert
+          name: docker-cert
+      volumes:
+      - name: docker-cert
+        hostPath:
+          path: /etc/docker
+
