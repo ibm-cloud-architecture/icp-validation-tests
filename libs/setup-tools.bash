@@ -24,6 +24,7 @@ function b64decode() {
 #####
 
 function setup_kubectl() {
+  echo "# Setting up kubectl"
   source ${APP_ROOT}/libs/icp-kube-functions.bash
 
   # Ensure that kubectl binary is available
@@ -118,6 +119,9 @@ function config_kube_credentials() {
     export USERNAME=$(echo ${ubase} | b64decode)
     export PASSWORD=$(echo ${pbase} | b64decode)
     export SERVER=$(kubectl -n kube-public get configmap ibmcloud-cluster-info -o jsonpath='{.data.cluster_address}')
+  else
+    echo "Unable to find kubernetes credentials. Please provide"
+    return 1
   fi
 
   # Create or update our kubeconfig
@@ -127,17 +131,19 @@ function config_kube_credentials() {
 }
 
 function setup_namespace() {
+  echo "# Setting up namespace"
   # Setup the namespace as appropriate
   if ! kubectl create namespace ${NAMESPACE} ; then
     # Namespace probably already existed. Not to worry
     echo "# Warning: Problems creating namespace. It may already have existed."
   fi
-  echo "API Versions ${API_VERSIONS[@]}"
+
   # Ensure admission policy if needed
   if [[ "${API_VERSIONS[@]}" =~ "securityenforcement.admission" ]]; then
-    echo "We need imagepolicy"
     kubectl -n ${NAMESPACE} apply -f ${APP_ROOT}/imagepolicy.yaml
   fi
+
+  make_privileged_namespace ${NAMESPACE}
 
   return 0
 }

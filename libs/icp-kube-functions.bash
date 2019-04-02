@@ -19,11 +19,6 @@ function auth_and_create_context() {
   $kube config set-credentials $username --token=$token
   $kube config set-context ${context_name} --user=${username} --namespace=${NAMESPACE}
 
-  echo "$kube config set-cluster ${context_name} --server=https://${SERVER}:${KUBE_APISERVER_PORT} --insecure-skip-tls-verify=true"
-  echo "$kube config set-context ${context_name} --cluster=${context_name}"
-  echo "$kube config set-credentials $username --token=$token"
-  echo "$kube config set-context ${context_name} --user=${username} --namespace=${NAMESPACE}"
-
 }
 
 function run_as() {
@@ -97,7 +92,7 @@ function populate_global_vars() {
   # Attempt to detect ICP Version
 
   ## At least since 3.1.0 ICP version has been set in platform-ui env variables
-  local icp_version=$($KUBECTL -n kube-system  describe daemonset platform-ui | grep ICP_VERSION | awk '{ print $2 }')
+  local icp_version=$(kubectl -n kube-system  describe daemonset platform-ui | grep ICP_VERSION | awk '{ print $2 }')
   if [[ ! -z icp_version && $icp_version != latest ]]; then
     # Attempt to break apart the version number
     export ICPVERSION_MAJOR=$(echo $icp_version | cut -d. -f1)
@@ -113,4 +108,34 @@ function populate_global_vars() {
   # Server Version: 3.1.1-973+c18caee2d82dc45146f843cb82ae7d5c28da7bc7
 
   export API_VERSIONS=( $(kubectl api-versions) )
+}
+
+function make_privileged_namespace() {
+  ns=${1}
+
+  echo "# Checking the rolebinding"
+  if [[ $(kubectl get rolebinding privileged-psp-user -n $ns --no-headers --ignore-not-found | wc -l | sed 's/^ *//') -eq 0 ]]; then
+    # Create rolebinding
+    echo "# Creating the rolebinding"
+
+    if [[ ! -z ${ICPVERSION_STR} && ${ICPVERSION_STR} != latest ]]; then
+      # Detect role to use from ICP version
+      if [[ ${ICPVERSION_MAJOR} -ge 3 && ${ICPVERSION_MINOR} -ge 1 && ${ICPVERSION_PATCH} -ge 0 ]]; then
+        # ICP 3.1.0 and newer has ibm-privileged-clusterrole
+        kubectl create rolebinding  privileged-psp-user  --clusterrole=ibm-privileged-clusterrole --serviceaccount=${ns}:default -n ${ns}
+      else
+        kubectl create rolebinding  privileged-psp-user  --clusterrole=privileged --serviceaccount=${ns}:default -n ${ns}
+      fi
+    # If we don't know the ICP version, attempt to guess from kubernetes server version
+  elif [[ ${ICPVERSION_STR} == latest ]]; then
+    kubectl create rolebinding  privileged-psp-user  --clusterrole=ibm-privileged-clusterrole --serviceaccount=${ns}:default -n ${ns}
+  else
+      # Attempt to detect from kubernetes version
+      if [[ ${K8S_SERVERVERSION_MAJOR} -eq 1 && ${K8S_SERVERVERSION_MINOR} -ge 11 ]]; then
+        kubectl create rolebinding  privileged-psp-user  --clusterrole=privileged --serviceaccount=${ns}:default -n ${ns}
+      else
+        kubectl create rolebinding  privileged-psp-user  --clusterrole=ibm-privileged-clusterrole --serviceaccount=${ns}:default -n ${ns}
+      fi
+    fi
+  fi
 }
