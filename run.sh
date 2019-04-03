@@ -10,6 +10,7 @@ source ${APP_ROOT}/defaults.sh
 
 # Load helper funktions
 source ${APP_ROOT}/libs/setup-tools.bash
+source ${APP_ROOT}/libs/icp-kube-functions.bash
 
 # Global variables that will be populated for test runs
 declare -a test_groups

@@ -21,6 +21,35 @@ function auth_and_create_context() {
 
 }
 
+function kube() {
+  kube="kubectl --kubeconfig=${GLOBAL_TMPDIR}/kubeconfig --context=basecontext"
+  $kube "$@"
+}
+
+export -f kube
+
+function rotate_namespace() {
+  kube="kubectl --kubeconfig=${GLOBAL_TMPDIR}/kubeconfig --context=basecontext"
+
+  # Determine the current namespace
+  curname=$( $kube config get-contexts $($kube config current-context) --no-headers | awk '{print $5}')
+
+  # Get the number if namespace is numbered
+  curnum=${curname##${_NAMESPACE_BASE}}
+
+  # Calculate next number in sequence
+  nextnum=$(( $curnum + 1))
+
+  # Set the new namespace
+  export NAMESPACE="${_NAMESPACE_BASE}${nextnum}"
+  $kube config set-context $($kube config current-context) --namespace=${NAMESPACE}
+
+  $kube create namespace ${NAMESPACE}
+
+}
+
+export -f rotate_namespace
+
 function run_as() {
   while getopts ":u:n:" arg; do
     case "${arg}" in

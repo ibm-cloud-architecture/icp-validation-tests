@@ -127,11 +127,16 @@ function config_kube_credentials() {
   # Create or update our kubeconfig
 
   auth_and_create_context ${USERNAME} ${PASSWORD} basecontext
+  kube config use-context basecontext
 
 }
 
 function setup_namespace() {
   echo "# Setting up namespace"
+
+  # Ensure that the original namespace name is saved for rotate_namespace
+  export _NAMESPACE_BASE=${NAMESPACE}
+
   # Setup the namespace as appropriate
   if ! kubectl create namespace ${NAMESPACE} ; then
     # Namespace probably already existed. Not to worry

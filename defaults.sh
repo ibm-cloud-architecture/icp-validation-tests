@@ -17,6 +17,7 @@ export IMPLICIT_CAPABILITIES=( "kubectl" )
 # kubectl, namespace, etc is setup beforehand
 export PREINSTALL_TEST_PREREQS=${PREINSTALL_TEST_PREREQS:-true}
 
+
 #####
 # Kubernetes and cluster defaults
 
@@ -26,3 +27,9 @@ export NAMESPACE=${NAMESPACE:-ivt}
 export KUBE_APISERVER_PORT=${KUBE_APISERVER_PORT:-8001}
 
 export SERVER=${SERVER}
+
+
+#####
+# Settings for the sequential-helpers framework
+export ON_SETUP_FAIL=${ON_SETUP_FAIL:-failfirst}
+export ROTATE_NAMESPACE=${ROTATE_NAMESPACE:-on_any_fail}

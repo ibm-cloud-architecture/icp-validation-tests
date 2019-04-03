@@ -1,5 +1,8 @@
-ENV_READY_SLEEP=${ENV_READY_SLEEP:-5}
-ENV_READY_TIMEOUT=${ENV_READY_TIMEOUT:-120}
+# Set defaults that can be overwritten
+export ENV_READY_SLEEP=${ENV_READY_SLEEP:-5}
+export ENV_READY_TIMEOUT=${ENV_READY_TIMEOUT:-120}
+export ON_SETUP_FAIL=${ON_SETUP_FAIL:-failfirst}
+export ROTATE_NAMESPACE=${ROTATE_NAMESPACE:-false}
 
 function setup() {
   tmp=${BATS_TMPDIR}/${BATS_TEST_DIRNAME##*/}${BATS_TEST_FILENAME##*/}
@@ -17,10 +20,6 @@ function setup() {
     # Prepare environment for test cases
     if type -t create_environment >/dev/null ; then
       if ! create_environment ; then
-        if [[ -z ${ON_SETUP_FAIL} ]]; then
-          # The default behavior will be to skip
-          export ON_SETUP_FAIL="skip"
-        fi
         # The setup failed.
         case "${ON_SETUP_FAIL}" in
           skip)
@@ -53,8 +52,7 @@ function setup() {
         sleep ${ENV_READY_SLEEP}
         _attempt=$(($_attempt+1))
       done
-
-      if [[ ! $_timeout -lt $(( $_attempt * ${ENV_READY_SLEEP} )) ]]; then
+      if [[ $_timeout -le $(( $_attempt * ${ENV_READY_SLEEP} )) ]]; then
         # We timed out waiting for environment to become ready. Skip subsequent tests
         case "${ON_SETUP_FAIL}" in
           skip)
@@ -120,7 +118,37 @@ function setup() {
 function teardown() {
 
   if [[ $BATS_TEST_NUMBER -eq ${#BATS_TEST_NAMES[@]} ]]; then
-    # If last test in case clean up tmp files
+
+    # Check if we need to rotate the namespace
+    if [[ ! -z ${ROTATE_NAMESPACE} && ! "${ROTATE_NAMESPACE}" == "false" ]]; then
+
+      # Detect if we have failed at all. If we have, rotate the workspace and don't clean up
+      case "${ROTATE_NAMESPACE}" in
+        on_setup_fail)
+          # Detect if we have failed setup
+          if [[ -e ${tmp}-setup.fail || -e ${tmp}-setup.skip ]]; then
+            rotate_namespace
+            _skip_destroy="true"
+          fi
+          ;;
+        on_test_fail)
+          # Detect if we have failed a test case
+          if [[ -e ${tmp}-subsequent.fail || -e ${tmp}-subsequent.skip ]]; then
+            rotate_namespace
+            _skip_destroy="true"
+          fi
+          ;;
+        on_any_fail)
+          # Detect if we have failed or skipped
+          if [[ -e ${tmp}-setup.fail || -e ${tmp}-setup.skip ||  -e ${tmp}-subsequent.fail || -e ${tmp}-subsequent.skip ]]; then
+            rotate_namespace
+            _skip_destroy="true"
+          fi
+          ;;
+      esac
+    fi
+
+    # clean up tmp files
     files=( "${tmp}-setup.skip" "${tmp}-setup.fail" "${tmp}-system.skip" \
             "${tmp}-system.fail" "${tmp}-subsequent.skip" "${tmp}-subsequent.fail" \
             "${tmp}-applicable.skip" )
@@ -130,7 +158,7 @@ function teardown() {
       fi
     done
 
-    if type -t destroy_environment >/dev/null ; then
+    if [[ $(type -t destroy_environment) && ! "$_skip_destroy" == "true" ]]; then
       destroy_environment
     fi
 
