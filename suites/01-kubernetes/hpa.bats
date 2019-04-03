@@ -3,9 +3,20 @@ CAPABILITIES=("namespace")
 
 # This will load helpers to be compatible with icp-sert-bats
 load ${APP_ROOT}/libs/sert-compat.bash
+load ${APP_ROOT}/libs/sequential-helpers.bash
 
-setup() {
-  if [[ $BATS_TEST_NUMBER -eq 1 ]]; then
+applicable() {
+  # Determine whether these tests are applicable in this environment
+  if [[ ${API_VERSIONS[@]} =~ "metrics.k8s.io" ]]; then
+    # Metrics API exists in this environment
+    return 0
+  else
+    # We don't support metrics in this environment, so will not apply
+    return 1
+  fi
+}
+create_environment() {
+
     # Create the sample application used for test
     $KUBECTL run php-apache --image="php:7.3-apache" --requests=cpu=200m --expose --port=80 --namespace=${NAMESPACE}
     # Waiting for pod startup
@@ -22,14 +33,9 @@ setup() {
         fi
         sleep 5
     done
-  fi
-
-  if [[ $BATS_TEST_NUMBER -eq 7 ]]; then
-    $KUBECTL apply -f $sert_bats_workdir/suites/01-kubernetes/template/hpa/hpa-customer-policy.yaml -n ${NAMESPACE}
-  fi
 }
 
-teardown() {
+destroy_environment() {
   # Clean up
   if [[ "$BATS_TEST_NUMBER" -eq 7 ]]; then
     $KUBECTL delete deployment php-apache php-apache-load --ignore-not-found --namespace=${NAMESPACE} --force --grace-period=0
@@ -196,14 +202,7 @@ teardown() {
   [[ $_pods_status -eq 1 ]]
 }
 
-@test "HPA Customer Metrics | Check the customer metrics server pod" {
-
-  _pods_status=$($KUBECTL get po -n kube-system -l k8s-app=metrics-server --no-headers | grep Running | wc -l | sed 's/^ *//')
-
-  [[ $_pods_status -eq 1 ]]
-}
-
-@test "HPA Customer Metrics | Check the customer metrics server pod" {
+@test "HPA Customer Metrics | Check the metrics server pod" {
 
   _pods_status=$($KUBECTL get po -n kube-system -l k8s-app=metrics-server --no-headers | grep Running | wc -l | sed 's/^ *//')
 

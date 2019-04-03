@@ -78,5 +78,5 @@ teardown() {
   $KUBECTL delete -f $sert_bats_workdir/suites/01-kubernetes/template/daemonset.yaml  --ignore-not-found --namespace=${NAMESPACE}
   ds_pod_num=$($KUBECTL get daemonset -l name=daemonset-test --namespace=${NAMESPACE}  --no-headers | wc -l | sed 's/^ *//')
 
-  [[ $ds_pod_num -eq 0 ]]
+  [[ $(($ds_pod_num+0)) -eq 0 ]]
 }

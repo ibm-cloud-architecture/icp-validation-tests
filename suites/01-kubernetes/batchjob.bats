@@ -3,49 +3,36 @@ CAPABILITIES=("namespace")
 
 # This will load helpers to be compatible with icp-sert-bats
 load ${APP_ROOT}/libs/sert-compat.bash
+load ${APP_ROOT}/libs/sequential-helpers.bash
+load ${APP_ROOT}/libs/wait-helper.bash
 
-setup() {
-  if [[ "$BATS_TEST_NUMBER" -eq 1 ]]; then
+create_environment() {
     # Create batch job
     $KUBECTL apply -f $sert_bats_workdir/suites/01-kubernetes/template/batch-job.yaml --namespace=${NAMESPACE}
-  fi
 }
 
-teardown() {
-  if [[ "$BATS_TEST_NUMBER" -eq ${#BATS_TEST_NAMES[@]} ]]; then
-    # Ensure job is properly cleaned up
-    $KUBECTL delete jobs -l job-name=pi --namespace=${NAMESPACE} --ignore-not-found --force --grace-period=0
-    for t in $(seq 1 50)
-    do
-       job_num=$($KUBECTL get jobs -l job-name=pi  --no-headers --namespace=${NAMESPACE} | awk '{print $3}')
-       if [[ $job_num -eq 0 ]]; then
-           echo "The batch job was delete successful."
-           break
-       fi
-       sleep 5
-    done
-  fi
+destroy_environment() {
+
+  # Ensure job is properly cleaned up
+  $KUBECTL delete jobs -l job-name=pi --namespace=${NAMESPACE} --ignore-not-found --force --grace-period=0
+  # Wait until grep can not find the pi job anymore
+  wait_for -c "$KUBECTL -n ${NAMESPACE} get jobs --show-labels | grep job-name=pi" -v 1
+
 }
 
 @test "Batch Job | Verify batch job created" {
-    batchjobs_data=$($KUBECTL get jobs -l job-name=pi --no-headers --namespace=${NAMESPACE} | wc -l | sed 's/^ *//')
-    [[ $batchjobs_data -ne 0 ]]
+    batchjobs_data=$($KUBECTL get jobs -l job-name=pi --no-headers --namespace=${NAMESPACE} | wc -l )
+    # since wc -l has strange formatting we'll run it through bash aritmathic $((X+0)) to fix that
+    [[ $(($batchjobs_data+0)) -gt 0 ]]
 }
 
 @test "Batch Job | Verify the jobs status" {
    # Check the jobs status
-   job_num=""
-   for t in $(seq 1 50)
-   do
-     job_num=$($KUBECTL get jobs -l job-name=pi  --no-headers --namespace=${NAMESPACE}  -oyaml | grep succeeded | awk '{print $2}')
-     if [[ $job_num -eq 1 ]]; then
-       echo "The batch job status was successful."
-       break
-      fi
-      sleep 2
-   done
 
-   [[ $job_num -eq 1 ]]
+   wait_for -c "$KUBECTL get jobs -l job-name=pi --namespace=${NAMESPACE} -o jsonpath='{.items[0].status.succeeded}'" -o "1"
+   retval=$?
+   [[ $retval -eq 0 ]]
+
 }
 
 @test "Batch Job | Verify the batch job value" {
@@ -80,6 +67,6 @@ teardown() {
     # Delete batchjob
     $KUBECTL delete jobs/pi --namespace=${NAMESPACE} --ignore-not-found
 
-    batchjobs_data=$($KUBECTL get jobs -l job-name=pi --namespace=${NAMESPACE} --no-headers | wc -l | sed 's/^ *//')
-    [[ $batchjobs_data -eq 0 ]]
+    batchjobs_data=$($KUBECTL get jobs -l job-name=pi --namespace=${NAMESPACE} --no-headers | wc -l)
+    [[ $(($batchjobs_data+0)) -eq 0 ]]
 }
