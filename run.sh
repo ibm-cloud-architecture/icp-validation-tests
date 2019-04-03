@@ -317,7 +317,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 
     # Create a global temp dir that persists between bats runs
     if type -p mktemp >/dev/null; then
-      GLOBAL_TMPDIR=$(mktemp -d)
+      export GLOBAL_TMPDIR=$(mktemp -d)
     fi
     if [[ -z ${GLOBAL_TMPDIR} ]]; then
       if [[ -z "$TMPDIR" ]]; then
