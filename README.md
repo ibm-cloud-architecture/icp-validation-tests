@@ -1,6 +1,8 @@
 
 # ICP Validation tests
 
+[![Build Status](https://travis-ci.org/ibm-cloud-architecture/icp-validation-tests.svg?branch=master)](https://travis-ci.org/ibm-cloud-architecture/icp-validation-tests)
+
 Integration tests provide end-to-end testing of ICP.
 
 While unit tests verify the code is working as expected by relying on mocks and
