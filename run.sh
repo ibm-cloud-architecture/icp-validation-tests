@@ -143,7 +143,9 @@ function prepare_environment() {
     for capability in "${desired_capabilities[@]}"; do
       if [[ "$(type -t setup_${capability})" == "function" ]]; then
         # All these functions are defined in setup-tools.bash
-        setup_${capability}
+        if ! setup_${capability} ; then
+          exit_error "Error performing setup_${capability}"
+        fi
       fi
     done
   fi
