@@ -42,7 +42,7 @@ export TEST_SUITE_ROOT=${BATS_TEST_DIRNAME}/mocks
   run setup_kubectl
 
   [[ $status -eq 1 ]]
-  [[ ${lines[1]} == "# Unable to locate or download kubectl binary" ]]
+  [[ ${output} =~ "# Unable to locate or download kubectl binary" ]]
 }
 
 @test "${part} | Download kubectl for osx from cluster" {
