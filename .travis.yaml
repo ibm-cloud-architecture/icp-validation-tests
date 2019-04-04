@@ -1,0 +1,13 @@
+dist: trusty
+language: minimal
+os:
+  - linux
+
+before_script:
+  - git clone https://github.com/bats-core/bats-core.git /tmp/bats
+  - mkdir -p /tmp/local
+  - bash /tmp/bats/install.sh /tmp/local
+  - export PATH=$PATH:/tmp/local/bin
+
+script:
+  - cd tests && bats .
