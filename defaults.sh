@@ -11,7 +11,7 @@ export BATS_OUTPUT=${BATS_OUTPUT:-pretty}
 export TEST_SUITE_ROOT=${TEST_SUITE_ROOT:-${APP_ROOT}/suites}
 
 # Setup even if not explicitly declared in *.bats cases
-export IMPLICIT_CAPABILITIES=( "kubectl" )
+export IMPLICIT_CAPABILITIES=( )
 
 # If disabled the assumption is that everything
 # kubectl, namespace, etc is setup beforehand
