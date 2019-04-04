@@ -221,3 +221,54 @@ images that will need to be added to air gapped environments as a prerequisite t
 Suggested images to use:
 - `nginx` -- where network functionality is required, i.e. requiring something to listen to a port
 - `busybox` -- small lightweight image with most useful tools available
+
+
+
+# Gotchas
+One “gotcha” that might come up after using Bats for a little while is testing the result of piped commands.
+
+For example, here’s a command which echos a string, the slices it up on spaces, and picks the second value:
+
+```
+$ echo 'foo bar baz' | cut -d' ' -f2
+bar
+```
+
+So you might expect a test like this to pass:
+```
+#!/usr/bin/env bats
+
+@test "Test that we get the word 'bar'" {
+    run echo 'foo bar baz' | cut -d' ' -f2
+    [ $output = "bar" ]
+}
+```
+But in reality it fails:
+```
+$ bats gotcha1.bats
+ ✗ Test that we get the word 'bar'
+   (in test file /Users/ross/bats/gotcha1.bats, line 5)
+
+1 test, 1 failure
+```
+
+This can be a bit of a head scratcher at first, but it makes sense when you realize that the run command is just like any other Unix command, and that run (which has no output) is in fact being piped to cut.
+
+The solution is to encapsulate the entire command being tested as a bash -c inline string:
+
+```
+#!/usr/bin/env bats
+
+@test "Test that we get the word 'bar'" {
+    run bash -c "echo 'foo bar baz' | cut -d' ' -f2"
+    [ "$output" = "bar" ]
+}
+```
+
+Which produces the desired result:
+```
+$ bats gotcha1.bats
+ ✓ Test that we get the word 'bar'
+
+1 test, 0 failures
+```
