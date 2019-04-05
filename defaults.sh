@@ -32,4 +32,5 @@ export SERVER=${SERVER}
 #####
 # Settings for the sequential-helpers framework
 export ON_SETUP_FAIL=${ON_SETUP_FAIL:-failfirst}
-export ROTATE_NAMESPACE=${ROTATE_NAMESPACE:-on_any_fail}
+export ON_ASSERT_FAIL=${ON_ASSERT_FAIL:-skip_subsequent}
+export ROTATE_NAMESPACE=${ROTATE_NAMESPACE:-false}

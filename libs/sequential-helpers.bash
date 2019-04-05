@@ -142,6 +142,7 @@ function teardown() {
           # Detect if we have failed or skipped
           if [[ -e ${tmp}-setup.fail || -e ${tmp}-setup.skip ||  -e ${tmp}-subsequent.fail || -e ${tmp}-subsequent.skip ]]; then
             rotate_namespace
+            echo "we rotated namspace" >> /tmp/debug.log
             _skip_destroy="true"
           fi
           ;;
@@ -159,6 +160,7 @@ function teardown() {
     done
 
     if [[ $(type -t destroy_environment) && ! "$_skip_destroy" == "true" ]]; then
+      echo "we destroy environment" >> /tmp/debug.log
       destroy_environment
     fi
 
@@ -166,11 +168,25 @@ function teardown() {
 }
 
 function skip_subsequent() {
+  echo "we skip subsequent" >> /tmp/debug.log
   touch ${tmp}-subsequent.skip
 }
 
 function fail_subsequent() {
+  echo "we fail subsequent" >> /tmp/debug.log
   touch ${tmp}-subsequent.fail
+}
+
+function assert_or_bail() {
+  if bash -c "$@" ; then
+    return 0
+  else
+    if type -t "${ON_ASSERT_FAIL}" >/dev/null; then
+      ${ON_ASSERT_FAIL}
+    fi
+    echo "$@ failed assertion" >&2
+    return 1
+  fi
 }
 
 # export -f skip_subsequent

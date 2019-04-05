@@ -178,6 +178,61 @@ When `ROTATE_NAMESPACE` is enabled, a failure will cause the `destroy_environmen
 `ROTATE_NAMESPACE` can be set to `on_setup_fail` which triggers this behaviour if `create_environment` or `environment_ready` fails, `on_test_fail` which triggers this behaviour if `fail_subsequent` or `skip_subsequent` are called, and `on_any_fail` which is a combination of these.
 
 
+### Skip or fail subsequent tests
+Some times we need to run a series of test cases that are dependent on each other.
+For example,
+1. add user X,
+2. then perform action Y with the new user X,
+3. then delete user X
+4. validate that something that was expected to happen happened
+
+These are connected sequence of events, and if we had a problem in any of these steps, we do not want to attempt the subsequent steps.
+For these scenarios we have a function `assert_or_bail`, which will "bail" subsequent tests with `skip` or `fail` if a given assertion fails.
+
+So for example
+```
+@test "create user x" {
+  run "command to create user x"
+  assert_or_bail "[[ '$output' =~ 'User x created' ]]"
+}
+
+@test "User X should not be allowed to access resource y" {
+  run "command for x to access y"
+  assert_or_bail "[[ $status -eq 1 ]]"
+  assert_or_bail "[[ '$output' =~ 'Access denied' ]]"
+}
+
+@test "User x can be deleted" {
+  run "command to delete user x"
+  assert_or_bail "[[ '$output' =~ 'User deleted' ]]"
+}
+
+@test "Delete user should cleanup some group" {
+  run "command to query group"
+  assert_or_bail "[[ ! '$output' =~ 'user x' ]]"
+}
+```
+
+NOTE: When using `assert_or_bail` any complex assertion using compound commands (such as `[[`) must be passed within single or double quotes. Since assertions typically use variables, you will want to double quote the outer statement and single quote the variable. For example `assert_or_bail "[[ '$foo' == 'bar' ]]"`
+
+The global variable `ON_ASSERT_FAIL` can be set to `skip_subsequent` or `fail_subsequent`, which will lead subsequent tests to be skipped or failed after an assertion has failed.
+
+When the global variable `ROTATE_NAMESPACE` is set to `on_test_fail` or `on_any_fail`, an `assert_or_bail` failure will also cause a namespace rotation and skip `destroy_environment` as described above.
+
+It is also possible to call `skip_subsequent` and `fail_subsequent` at any stage to skip subsequent tests.
+For example
+```
+@test "test something" {
+  run some random command that does something
+  if [[ "$output" =~ something ]]; then
+    # There may be some conditions where we determine that
+    # the rest of the tests in this file can be skipped
+    skip_subsequent
+  fi
+  [[ $status -eq 0 ]]
+}
+```
+
 
 ## Functions available to tests
 
