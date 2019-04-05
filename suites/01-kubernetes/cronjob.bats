@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-CAPABILITIES=("namespace")
+CAPABILITIES=("kubectl" "namespace")
 
 # This will load helpers to be compatible with icp-sert-bats
 load ${APP_ROOT}/libs/sert-compat.bash
@@ -10,13 +10,8 @@ create_environment() {
 }
 
 environment_ready() {
-  $KUBECTL get cronjob -n ${NAMESPACE} | grep hello
-  retval=$?
-  if [[ $retval -eq 0 ]]; then
-    return 0
-  else
-    return 1
-  fi
+  run bash -c "$KUBECTL get pods -n ${NAMESPACE} | grep hello"
+  return $status
 }
 
 destroy_environment() {
@@ -25,20 +20,15 @@ destroy_environment() {
 
 @test "CronJob | Verify the cronjob created" {
    # Check the jobs status
-   $KUBECTL get cronjob -n ${NAMESPACE} | grep hello
-   retval=$?
-   # Retval will reflect whether grep found the value hello which is the name of the job
-   [[ $retval -eq 0 ]]
+   run bash -c "$KUBECTL get cronjob -n ${NAMESPACE} | grep hello"
+   # status will reflect whether grep found the value hello which is the name of the job
+   assert_or_bail "[[ $status -eq 0 ]]"
 }
 
 @test "CronJob | job has run successfully" {
-  # Check for the output on the cronjob container
-
-  # Get a list of jobs
-  jobs=( $KUBECTL -n ${NAMESPACE} get cronjob hello -o jsonpath='{.status.active..name}' )
 
   # Get the log output of the last jobs pod
-  podlog=$( $KUBECTL -n ${NAMESPACE} logs -l job-name=${jobs[-1]})
-  
-  [[ "$podlog" =~ "Hello from the Kubernetes cluster" ]]
+  run bash -c "$KUBECTL get pods -n ${NAMESPACE} | grep hello"
+
+  assert_or_bail "[[ '$output' =~ Completed ]]"
 }

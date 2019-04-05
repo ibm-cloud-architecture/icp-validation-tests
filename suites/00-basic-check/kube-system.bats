@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-
+CAPABILITIES=("kubectl")
 # This will load the helpers.
 load ${APP_ROOT}/libs/sert-compat.bash
 

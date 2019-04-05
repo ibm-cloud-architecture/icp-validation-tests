@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+CAPABILITIES=("kubectl")
 load ${APP_ROOT}/libs/sert-compat.bash
 
 @test "Pods status | All pods status check" {

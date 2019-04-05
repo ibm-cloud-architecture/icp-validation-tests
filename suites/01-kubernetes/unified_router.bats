@@ -1,5 +1,5 @@
 #!/usr/bin/env bats
-
+CAPABILITIES=("kubectl")
 # This will load helpers to be compatible with icp-sert-bats
 load ${APP_ROOT}/libs/sert-compat.bash
 
