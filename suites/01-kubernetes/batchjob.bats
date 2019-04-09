@@ -15,9 +15,6 @@ destroy_environment() {
 
   # Ensure job is properly cleaned up
   $KUBECTL delete jobs -l job-name=pi --namespace=${NAMESPACE} --ignore-not-found --force --grace-period=0
-  # Wait until grep can not find the pi job anymore
-  wait_for -c "$KUBECTL -n ${NAMESPACE} get jobs --show-labels | grep job-name=pi" -v 1
-
 }
 
 @test "Batch Job | Verify batch job created" {
