@@ -59,11 +59,3 @@ destroy_environment() {
 
    [[ $job_data == 3.1415* ]]
 }
-
-@test "Batch Job | Delete batchjob" {
-    # Delete batchjob
-    $KUBECTL delete jobs/pi --namespace=${NAMESPACE} --ignore-not-found
-
-    batchjobs_data=$($KUBECTL get jobs -l job-name=pi --namespace=${NAMESPACE} --no-headers | wc -l)
-    [[ $(($batchjobs_data+0)) -eq 0 ]]
-}
