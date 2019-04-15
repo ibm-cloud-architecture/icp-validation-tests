@@ -4,6 +4,7 @@ CAPABILITIES=("kubectl" "namespace")
 # This will load helpers to be compatible with icp-sert-bats
 load ${APP_ROOT}/libs/sert-compat.bash
 load ${APP_ROOT}/libs/sequential-helpers.bash
+load ${APP_ROOT}/libs/wait-helper.bash
 
 create_environment() {
   $KUBECTL apply -f $sert_bats_workdir/suites/01-kubernetes/template/cronjob.yaml --namespace=${NAMESPACE}
@@ -26,6 +27,8 @@ destroy_environment() {
 }
 
 @test "CronJob | job has run successfully" {
+
+  wait_for -c "$KUBECTL get pods -n ${NAMESPACE} | grep hello" -o "Completed"
 
   # Get the log output of the last jobs pod
   run bash -c "$KUBECTL get pods -n ${NAMESPACE} | grep hello"

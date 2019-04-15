@@ -39,40 +39,11 @@ destroy_environment() {
   # Clean up
   if [[ "$BATS_TEST_NUMBER" -eq 7 ]]; then
     $KUBECTL delete deployment php-apache php-apache-load --ignore-not-found --namespace=${NAMESPACE} --force --grace-period=0
-    for t in $(seq 1 50)
-    do
-      number=$($KUBECTL get deployment php-apache --ignore-not-found --no-headers | wc -l | sed 's/^ *//')
-      if [[ $number == 0 ]]; then
-        echo "The deployment php-apache was removed"
-        break
-      fi
-      sleep 5
-    done
-    for t in $(seq 1 50)
-    do
-      number=$($KUBECTL get deployment php-apache-load --ignore-not-found --no-headers | wc -l | sed 's/^ *//')
-      if [[ $number == 0 ]]; then
-        echo "The deployment php-apache-load was removed"
-        break
-      fi
-      sleep 5
-    done
 
     $KUBECTL delete hpa php-apache --ignore-not-found --namespace=${NAMESPACE} --force --grace-period=0
-    for t in $(seq 1 50)
-    do
-      number=$($KUBECTL get hpa php-apache --ignore-not-found --no-headers | wc -l | sed 's/^ *//')
-      if [[ $number == 0 ]]; then
-        echo "The hpa was removed"
-        break
-      fi
-      sleep 5
-    done
   fi
 
-  if [[ "$BATS_TEST_NUMBER" -eq ${#BATS_TEST_NAMES[@]} ]]; then
-    $KUBECTL delete -f $sert_bats_workdir/suites/01-kubernetes/template/hpa/hpa-customer-policy.yaml -n ${NAMESPACE}
-  fi
+  $KUBECTL delete -f $sert_bats_workdir/suites/01-kubernetes/template/hpa/hpa-customer-policy.yaml -n ${NAMESPACE} --ignore-not-found
 }
 
 @test "HPA Policy Load Increase| Create HPA policy" {
