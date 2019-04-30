@@ -131,6 +131,8 @@ fi
 
 @test "Service Create | Verify the service with NodePort" {
 
+  skip "Need to rewrite this test"
+
   get_master_ip
 
   node_port=$($KUBECTL get service nginx --namespace=${NAMESPACE} --no-headers -o jsonpath='{.spec.ports[0].nodePort}')
@@ -183,6 +185,8 @@ fi
 
 @test "Service Expose | Verify the Exposed service with NodePort" {
 
+  skip "Need to rewrite this test"
+  
   get_master_ip
   node_port=$($KUBECTL get service nginx --namespace=${NAMESPACE} --no-headers -o jsonpath='{.spec.ports[0].nodePort}')
   #Verify the service
