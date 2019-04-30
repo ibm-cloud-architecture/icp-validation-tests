@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Helper functions specific to manage ICP and Kubernetes
-# This is used as a helper for run.sh
+# This is used as a helper for run.sh, with certain functions
+# exported to make them available to tests and other sub processes
 ########
 function auth_and_create_context() {
 
@@ -168,3 +169,22 @@ function make_privileged_namespace() {
     fi
   fi
 }
+
+function get_infrastructure_platform() {
+
+  # Attempt to detect what infrastructure platform the cluster is running on
+  local provider=""
+
+  # Cloud platforms such as azure, gce, aws and openstack that have cloud providers will
+  # set the providerID spec on nodes. Attempt to extract this
+  providerstring=$(kube get nodes -o jsonpath='{.items[0].spec.providerID}')
+  if [[ ! -z ${providerstring} ]]; then
+    provider=${providerstring%%:*}
+  fi
+
+  # TODO
+  # There may be other ways to detect other platform
+  echo ${provider}
+}
+
+export -f get_infrastructure_platform
