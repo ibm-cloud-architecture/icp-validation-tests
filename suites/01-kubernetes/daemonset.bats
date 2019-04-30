@@ -57,10 +57,10 @@ teardown() {
   pod_name=$($KUBECTL get pods --namespace=${NAMESPACE}  -oname|awk -F "/"  '{print $2}' )
 
   # Edit the daemonset
-  kubectl patch ds/$ds_name --namespace=${NAMESPACE}  -p '{"spec":{"template":{"spec":{"containers":[{"name":"daemonset-test","image":"nginx:1.15.8-alpine"}]}}}}'
+  $KUBECTL patch ds/$ds_name --namespace=${NAMESPACE}  -p '{"spec":{"template":{"spec":{"containers":[{"name":"daemonset-test","image":"nginx:1.15.8-alpine"}]}}}}'
 
   # Check the patch result
-  kubectl rollout status ds/daemonset-test --namespace=${NAMESPACE}
+  $KUBECTL rollout status ds/daemonset-test --namespace=${NAMESPACE}
   [[ $? -eq 0 ]]
 }
 
