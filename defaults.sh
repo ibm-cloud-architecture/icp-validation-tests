@@ -26,7 +26,11 @@ export NAMESPACE=${NAMESPACE:-ivt}
 
 export KUBE_APISERVER_PORT=${KUBE_APISERVER_PORT:-8001}
 
+# Server / host part of url for kubernetes API server and ICP management ingress
 export SERVER=${SERVER}
+
+# The ICP Management ingress / router is located at port 8443 by default
+export ROUTER_HTTPS_PORT=${ROUTER_HTTPS_PORT:-8443}
 
 
 #####
