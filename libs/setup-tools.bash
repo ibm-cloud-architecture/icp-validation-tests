@@ -59,6 +59,9 @@ function find_or_download_kubectl() {
     return 0
   fi
 
+  # Make sure bin directory exists
+  mkdir -p ${APP_ROOT}/bin
+  
   # Attempt to download kubectl from ICP environment
   if [[ ! -z ${SERVER} ]]; then
     case "$(uname -sm)" in
