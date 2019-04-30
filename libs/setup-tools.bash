@@ -61,7 +61,7 @@ function find_or_download_kubectl() {
 
   # Make sure bin directory exists
   mkdir -p ${APP_ROOT}/bin
-  
+
   # Attempt to download kubectl from ICP environment
   if [[ ! -z ${SERVER} ]]; then
     case "$(uname -sm)" in
@@ -141,14 +141,14 @@ function setup_namespace() {
   export _NAMESPACE_BASE=${NAMESPACE}
 
   # Setup the namespace as appropriate
-  if ! kubectl create namespace ${NAMESPACE} ; then
+  if ! kube create namespace ${NAMESPACE} ; then
     # Namespace probably already existed. Not to worry
     echo "# Warning: Problems creating namespace. It may already have existed."
   fi
 
   # Ensure admission policy if needed
   if [[ "${API_VERSIONS[@]}" =~ "securityenforcement.admission" ]]; then
-    kubectl -n ${NAMESPACE} apply -f ${APP_ROOT}/imagepolicy.yaml
+    kube -n ${NAMESPACE} apply -f ${APP_ROOT}/imagepolicy.yaml
   fi
 
   make_privileged_namespace ${NAMESPACE}
