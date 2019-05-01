@@ -5,6 +5,7 @@ CAPABILITIES=("selfsigned_registry" "namespace")
 load ${APP_ROOT}/libs/sert-compat.bash
 
 setup() {
+  skip "Not yet implemented to support public clouds"
   if [[ $BATS_TEST_NUMBER -eq 2 ]]; then
     if [[ $(uname -s) == 'Darwin' ]]; then
       skip "Did not support this case on MacOS so far"

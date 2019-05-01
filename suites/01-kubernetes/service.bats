@@ -22,6 +22,7 @@ done
 
 # Make sure that the LB Gets created with an IP address
 setup() {
+  skip "Not yet implemented"
   # Only setup the loadbalancer before the first LB Test and if on supported platform
   if [[ "$BATS_TEST_NUMBER" -eq 1 ]]; then
     if [[ "${RUN_TEST}" == "true" ]]; then
@@ -106,6 +107,8 @@ fi
 
 @test "Service Create | Verify service with ClusterIP" {
 
+  # TODO Rewrite this to check connectivity from pod to service IP
+  skip "Needs refactoring"
   if [[ $in_cluster == "false" && $IN_DOCKER == "false" ]]; then
     skip "the test was running outside of ICP cluster, skip the ClusterIP verification"
   fi
@@ -186,7 +189,7 @@ fi
 @test "Service Expose | Verify the Exposed service with NodePort" {
 
   skip "Need to rewrite this test"
-  
+
   get_master_ip
   node_port=$($KUBECTL get service nginx --namespace=${NAMESPACE} --no-headers -o jsonpath='{.spec.ports[0].nodePort}')
   #Verify the service

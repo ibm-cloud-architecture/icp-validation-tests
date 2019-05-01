@@ -8,6 +8,10 @@ get_master_ip
 get_router_https_port
 get_auth_token
 
+setup() {
+  skip "Needs to be refactored to work in all environments"
+}
+
 teardown () {
   if [[ "$BATS_TEST_NUMBER" -eq ${#BATS_TEST_NAMES[@]} ]]; then
     # Clean up
