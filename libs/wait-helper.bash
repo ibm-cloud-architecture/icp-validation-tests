@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # wait-helper -- Helper to simplify waiting for certain condition
 # -c "Command to run"
-# -v "Retun value to wait for (default 0)"
+# -v "Optional: Retun value to wait for (default 0)"
 # -o "Optional: Output string to wait for"
 # -r "Optional: Retry interval (default 5 seconds)"
 # -t "Optional: Timeout (default 60 seconds)"
