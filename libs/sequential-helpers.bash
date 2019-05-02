@@ -3,6 +3,7 @@ export ENV_READY_SLEEP=${ENV_READY_SLEEP:-5}
 export ENV_READY_TIMEOUT=${ENV_READY_TIMEOUT:-120}
 export ON_SETUP_FAIL=${ON_SETUP_FAIL:-failfirst}
 export ROTATE_NAMESPACE=${ROTATE_NAMESPACE:-false}
+export ON_ASSERT_FAIL=${ON_ASSERT_FAIL:-skip_subsequent}
 
 function setup() {
   tmp=${BATS_TMPDIR}/${BATS_TEST_DIRNAME##*/}${BATS_TEST_FILENAME##*/}
@@ -168,12 +169,10 @@ function teardown() {
 }
 
 function skip_subsequent() {
-  echo "we skip subsequent" >> /tmp/debug.log
   touch ${tmp}-subsequent.skip
 }
 
 function fail_subsequent() {
-  echo "we fail subsequent" >> /tmp/debug.log
   touch ${tmp}-subsequent.fail
 }
 
