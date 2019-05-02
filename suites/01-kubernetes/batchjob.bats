@@ -26,9 +26,7 @@ destroy_environment() {
 @test "Batch Job | Verify the jobs status" {
    # Check the jobs status
 
-   wait_for -c "$KUBECTL get jobs -l job-name=pi --namespace=${NAMESPACE} -o jsonpath='{.items[0].status.succeeded}'" -o "1"
-   retval=$?
-   [[ $retval -eq 0 ]]
+  wait_for -t 120 -c "$KUBECTL get jobs -l job-name=pi --namespace=${NAMESPACE} -o jsonpath='{.items[0].status.succeeded}'" -o "1"
 
 }
 
