@@ -97,6 +97,51 @@ destroy_environment() {
   assert_or_bail "[[ '$output' =~ 'something else' ]]"
 ```
 
+## wait-helper
+
+The wait helper provides a function `wait_for` which allows you to wait for an arbitrary condition
+to be met.
+The function takes the following configurations
+
+  * -c "Command to run"
+  * -v "Optional: Retun value to wait for (default 0)"
+  * -o "Optional: Output string to wait for"
+  * -r "Optional: Retry interval (default 5 seconds)"
+  * -t "Optional: Timeout (default 60 seconds)"
+
+If neither -v or -o is provided, the default condition becomes "-v 0"
+
+The function executes the command `-c "some command"` every `-r "retry interval"` until either the condition `-v <desired exit code of command>` or `-o <desired output from command>` is met. If the condition is met within the timeout period `-t <timeout>` `wait_for` will return `0` (true), if it times out it will return `1` (false).
+
+wait_for can itself become a test condition in bats, for example
+
+```
+@test "Ensure POD can be created" {
+  run kube create -f /my/deployment.yaml
+
+  # Wait for the pod to be in a running state.
+  # Pass test if pod becomes available, fail test if timeout reached
+  wait_for -c "kube get pods -l app=myapp,deployment=mydeployment" -o "Running"
+
+}
+```
+
+In the example above, bats will pass the test if the POD with the matching label enters a running state within the default timeout period (60 seconds), and fail the test if the timeout period is reached
+
+If you for some reason do not want to fail the test if the condition is not met, or you want to perform some other action before finishing the test, you can wrap it in the bats `run` function.
+```
+@test "Spin up a pod" {
+  run kube create -f /my/deployment.yaml
+
+  # Wait for the pod to be in a running state
+  run wait_for -c "kube get pods -l app=myapp,deployment=mydeployment" -o "Running"
+
+  # Skip subsequent tests in the bats file if the POD did not become available
+  assert_or_bail "[[ $status -eq 0 ]]"
+
+}
+```
+
 # Extending the framework
 
 Always write unit tests and make sure all unit tests pass before committing code.
