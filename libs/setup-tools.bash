@@ -129,7 +129,11 @@ function config_kube_credentials() {
 
   # Create or update our kubeconfig
 
-  auth_and_create_context ${USERNAME} ${PASSWORD} basecontext
+  if ! auth_and_create_context ${USERNAME} ${PASSWORD} basecontext ; then
+    echo "Problems authenticating with $SERVER"
+    return 1
+  fi
+  
   kube config use-context basecontext
 
 }

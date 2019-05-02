@@ -10,8 +10,39 @@ function auth_and_create_context() {
   password=$2
   context_name=$3
 
-  # Now get authentication token
-  token=$(curl -s -k -H "Content-Type: application/x-www-form-urlencoded;charset=UTF-8" -d "grant_type=password&username=${username}&password=${password}&scope=openid%20email%20profile" https://${SERVER}:8443/idprovider/v1/auth/identitytoken --insecure | jq .id_token | awk  -F '"' '{print $2}')
+  # Now get authentication token with retry
+  max_retries="10"
+  attempt="0"
+  success="false"
+  echo "# Getting token from $SERVER"
+  while [[ ${max_retries} -gt ${attempt} && ${success} != "true" ]]; do
+    [[ "$attempt" -gt 0 ]] && echo "# Retrying..."
+    response=$(curl -s -k -H "Content-Type: application/x-www-form-urlencoded;charset=UTF-8" -d "grant_type=password&username=${username}&password=${password}&scope=openid%20email%20profile" https://${SERVER}:8443/idprovider/v1/auth/identitytoken --insecure)
+    if [[ $? -eq 0 ]]; then
+      success="true"
+    fi
+    attempt=$((${attempt} + 1))
+  done
+
+  if [[ "${success}" == "false" ]]; then
+    echo "# Not able to get token from $SERVER"
+    echo "# Last exit code and response: $? $response"
+    return 1
+  fi
+
+  # Attempt to extract the token
+  token=$(echo ${response} | jq -r .id_token)
+
+  if [[ $? -gt 0 ]]; then
+    echo "Unable to find token in response: $response"
+    return 1
+  fi
+
+  # If token is empty we have a problem
+  if [[ "${token}" == "" ]]; then
+    echo "Error extracting token from response: $response"
+    return 1
+  fi
 
   # Create or update our kubeconfig
   kube="kubectl --kubeconfig=${GLOBAL_TMPDIR}/kubeconfig"
