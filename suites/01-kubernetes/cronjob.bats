@@ -20,18 +20,15 @@ destroy_environment() {
 }
 
 @test "CronJob | Verify the cronjob created" {
+
    # Check the jobs status
-   run bash -c "$KUBECTL get cronjob -n ${NAMESPACE} | grep hello"
-   # status will reflect whether grep found the value hello which is the name of the job
-   assert_or_bail "[[ $status -eq 0 ]]"
+   wait_for -c "$KUBECTL get cronjob -n ${NAMESPACE} | grep hello" -v "0"
+
 }
 
 @test "CronJob | job has run successfully" {
 
+  # Ensure job marked as completed
   wait_for -c "$KUBECTL get pods -n ${NAMESPACE} | grep hello" -o "Completed"
 
-  # Get the log output of the last jobs pod
-  run bash -c "$KUBECTL get pods -n ${NAMESPACE} | grep hello"
-
-  assert_or_bail "[[ '$output' =~ Completed ]]"
 }
