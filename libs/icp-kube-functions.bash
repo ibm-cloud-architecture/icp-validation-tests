@@ -169,6 +169,36 @@ function populate_global_vars() {
   # Server Version: 3.1.1-973+c18caee2d82dc45146f843cb82ae7d5c28da7bc7
 
   export API_VERSIONS=( $(kube api-versions) )
+
+  # Get info from kube-public ibm-cluster-info
+  clusterinfo=$(kube -n kube-public get cm ibmcloud-cluster-info -o yaml)
+
+  if [[ "$clusterinfo" == "" ]]; then
+    echo "WARNING: Could not find configmap ibm-cluster-info in kube-public"
+    echo "Some tests may not work as expected"
+    # I don't think we'll abort tests....
+  fi
+
+  # Extract relevant information
+  proxy_address=$(echo "$clusterinfo" | awk ' $1 == "proxy_address:" { print $2 }')
+  cluster_address=$(echo "$clusterinfo" | awk ' $1 == "cluster_address:" { print $2 }')
+  cluster_kube_apiserver_host=$(echo "$clusterinfo" | awk ' $1 == "cluster_kube_apiserver_host:" { print $2 }')
+  cluster_kube_apiserver_port=$(echo "$clusterinfo" | awk ' $1 == "cluster_kube_apiserver_port:" { print $2 }')
+  cluster_router_http_port=$(echo "$clusterinfo" | awk ' $1 == "cluster_router_http_port:" { print $2 }')
+  cluster_router_https_port=$(echo "$clusterinfo" | awk ' $1 == "cluster_router_https_port:" { print $2 }')
+  proxy_ingress_http_port=$(echo "$clusterinfo" | awk ' $1 == "proxy_ingress_http_port:" { print $2 }')
+  proxy_ingress_https_port=$(echo "$clusterinfo" | awk ' $1 == "proxy_ingress_https_port:" { print $2 }')
+
+  # Export the information
+  export PROXY_ADDRESS=${PROXY_ADDRESS:-$proxy_address}
+  export CLUSTER_ADDRESS=${CLUSTER_ADDRESS:-$cluster_address}
+  export CLUSTER_KUBE_APISERVER_HOST=${CLUSTER_KUBE_APISERVER_HOST:-$cluster_kube_apiserver_host}
+  export CLUSTER_KUBE_APISERVER_PORT=${CLUSTER_KUBE_APISERVER_PORT:-$cluster_kube_apiserver_port}
+  export CLUSTER_ROUTER_HTTP_PORT=${CLUSTER_ROUTER_HTTP_PORT:-$cluster_router_http_port}
+  export CLUSTER_ROUTER_HTTPS_PORT=${CLUSTER_ROUTER_HTTPS_PORT:-$cluster_router_https_port}
+  export PROXY_INGRESS_HTTP_PORT=${PROXY_INGRESS_HTTP_PORT:-$proxy_ingress_http_port}
+  export PROXY_INGRESS_HTTPS_PORT=${PROXY_INGRESS_HTTPS_PORT:-$proxy_ingress_https_port}
+
 }
 
 function make_privileged_namespace() {

@@ -268,6 +268,15 @@ There are several global variables you can use to introspect on Bats tests
 - `$ICPVERSION_STR` is the ICP platform full version string
 - `$API_VERSIONS` array of kubernetes api versions
 
+- The following variables are propulated from the `ibmcloud-cluster-info` in the `kube-public` namespace
+  * `PROXY_ADDRESS`
+  * `CLUSTER_ADDRESS`
+  * `CLUSTER_KUBE_APISERVER_HOST`
+  * `CLUSTER_KUBE_APISERVER_PORT`
+  * `CLUSTER_ROUTER_HTTP_PORT`
+  * `CLUSTER_ROUTER_HTTPS_PORT`
+  * `PROXY_INGRESS_HTTP_PORT`
+  * `PROXY_INGRESS_HTTPS_PORT`
 
 ### Standard images to use
 
