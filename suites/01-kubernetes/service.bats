@@ -72,10 +72,6 @@ destroy_environment() {
 
 @test "Service Create | Create service with NodePort" {
 
-  # if [[ "${NODEPORT}" == "disabled" ]]; then
-  #   skip "NodePort not enabled in this environment"
-  # fi
-
   # Generally we won't do this in environments that support external loadbalancer
   if [[ "${RUN_LB_TEST}" == "true" ]]; then
     skip "Environment supports loadbalancer, will test that instead"
