@@ -2,217 +2,131 @@
 CAPABILITIES=("kubectl" "namespace")
 
 # This will load helpers to be compatible with icp-sert-bats
-load ${APP_ROOT}/libs/sert-compat.bash
+load ${APP_ROOT}/libs/sequential-helpers.bash
+
+# Load aditional helpers
+load ${APP_ROOT}/libs/wait-helper.bash
 
 # Attempt to auto-detect what infrastructure platform
 # the ICP environment is running on (azure, gce, vmware, etc)
 INF_PLATFORM=$(get_infrastructure_platform)
 
 # Infrastructure platforms that is expected to support kubectl expose deployment --type=LoadBalancer
-TESTABLE_PLATFORMS=("azure" "gce" "aws")
+LB_SVC_PLATFORMS=("azure" "gce" "aws")
 
 # Check if we're on a platform that supports loadbalancers
-for p in ${TESTABLE_PLATFORMS[@]}; do
+for p in ${LB_SVC_PLATFORMS[@]}; do
   if [[ ${p} == ${INF_PLATFORM} ]]; then
-    RUN_TEST="true"
+    RUN_LB_TEST="true"
   fi
 done
 
 # TODO Need to support manually enable test for environments where LoadBaancer has custom implementation
 
-# Make sure that the LB Gets created with an IP address
-setup() {
-  skip "Not yet implemented"
-  # Only setup the loadbalancer before the first LB Test and if on supported platform
-  if [[ "$BATS_TEST_NUMBER" -eq 1 ]]; then
-    if [[ "${RUN_TEST}" == "true" ]]; then
-      # First create a deployment
-      $KUBECTL run nginxlb --labels='run=nginx,test=loadbalancer' --replicas=1 --image-pull-policy=IfNotPresent --image=${TEST_IMAGE} --namespace=${NAMESPACE} --port=80
-      # Expose the deployment
-      $KUBECTL --namespace=${NAMESPACE} expose deployment nginxlb --port=80 --type=LoadBalancer --labels='run=nginx,test=loadbalancer'
-      # Wait for the loadbalancer to be ready
-      retries=20
-      lb=$($KUBECTL --namespace=${NAMESPACE} get svc -l run=nginx,test=loadbalancer --no-headers | awk '{print $4}')
-      while [ "$lb" == "<pending>"  -o "$lb" == "" -o "$retries" -eq 0 ]; do
-        retries=$((retries-1))
-        sleep 10s
-        lb=$($KUBECTL --namespace=${NAMESPACE} get svc -l run=nginx,test=loadbalancer --no-headers | awk '{print $4}')
-      done
-    fi
-    #First create a deployment
-    $KUBECTL run nginx --replicas=1 --image-pull-policy=IfNotPresent --image=${TEST_IMAGE} --namespace=${NAMESPACE} --port=80
+create_environment() {
+  # Create the deployment that the various connectivity tests will be run against
+  kube run httpserver --labels='run=http,test=service,type=server' --replicas=1 --image-pull-policy=IfNotPresent --image=${HTTP_IMAGE_SMALL} --port=80
 
-    num_podrunning=0
-    desired_pod=$($KUBECTL get pods -lrun=nginx --namespace=${NAMESPACE} --no-headers | awk '{print $2}' | awk -F '/' '{print $2}')
-    for t in $(seq 1 50)
-    do
-      num_podrunning=$($KUBECTL get pods -lrun=nginx --namespace=${NAMESPACE} --no-headers | awk '{print $2}' | awk -F '/' '{print $1}')
-      desired_pod=$($KUBECTL get pods -lrun=nginx --namespace=${NAMESPACE} --no-headers | awk '{print $2}' | awk -F '/' '{print $2}')
-      if [[ $num_podrunning == $desired_pod ]]; then
-        echo "The pod was running"
-        break
-      fi
-      sleep 5
-    done
+  # Create the baseline service with cluster IP
+  kube expose deployment httpserver --name="httpserver" --port=80 --labels='run=http,test=service,type=clusterip' --selector='run=http,test=service,type=server'
+
+  # If we are running loadbalancer tests, we should create the loadbalancer now
+  if [[ "${RUN_LB_TEST}" == "true" ]]; then
+    kube expose service httpserver --name="loadbalancertest" --port=80 --type=LoadBalancer --selector='run=http,test=service,type=server' --labels='run=http,test=service,type=loadbalancer'
   fi
 }
 
-teardown() {
-  # Only tear down the loadbalancer when the last test is completed
-  if [[ "$BATS_TEST_NUMBER" -eq ${#BATS_TEST_NAMES[@]} ]]; then
-    if [[ "${RUN_TEST}" == "true" ]]; then
-      $KUBECTL delete deployment --selector='run=nginx,test=loadbalancer' --ignore-not-found --namespace=${NAMESPACE}
-      $KUBECTL delete svc --selector='run=nginx,test=loadbalancer' --ignore-not-found --namespace=${NAMESPACE}
-    fi
-    #Clean up
-    $KUBECTL delete deployment -lrun=nginx --ignore-not-found --namespace=${NAMESPACE}
-    for t in $(seq 1 50)
-    do
-      number=$($KUBECTL get deployment --ignore-not-found --no-headers --namespace=${NAMESPACE} | wc -l | sed 's/^ *//')
-      if [[ $number == 0 ]]; then
-         echo "The deployment was removed"
-         break
-      fi
-      sleep 5
-    done
-
-    $KUBECTL delete service -lrun=nginx --ignore-not-found --namespace=${NAMESPACE}
-    for t in $(seq 1 50)
-    do
-      number=$($KUBECTL get service --ignore-not-found --no-headers --namespace=${NAMESPACE} | wc -l | sed 's/^ *//')
-      if [[ $number == 0 ]]; then
-         echo "The service was removed"
-         break
-      fi
-      sleep 5
-    done
-  fi
+environment_ready() {
+  # We're ready to perform tests when the http server is ready
+  kube get pods -l run=http,test=service | grep Running
 }
 
-if [[ -s /opt/ibm/cfc/version ]]; then
-  in_cluster="true"
-else
-  in_cluster="false"
-fi
+destroy_environment() {
+  # Cleanup the environment
+  kube delete svc -l run=http,test=service
+  kube delete deployment -l run=http,test=service
+}
 
 @test "Service Create | Create service with ClusterIP" {
-  #Create the service with ClusterIP
-  $KUBECTL apply -f $sert_bats_workdir/suites/01-kubernetes/template/service/service-clusterIP.yaml --namespace=${NAMESPACE}
 
-  service_number=$($KUBECTL get service -lrun=nginx --namespace=${NAMESPACE} --no-headers | wc -l | sed 's/^ *//')
-
-  [[ $service_number -eq 1 ]]
-
+  # Ensure clusterip created, checking for the line "80/TCP" which indicates that it's exposed
+  assert_or_bail 'wait_for -c "kube get svc -l run=http,test=service,type=clusterip" -o "80/TCP"'
 }
 
-@test "Service Create | Verify service with ClusterIP" {
+@test "Service Create | Verify connectivity to ClusterIP" {
 
-  # TODO Rewrite this to check connectivity from pod to service IP
-  skip "Needs refactoring"
-  if [[ $in_cluster == "false" && $IN_DOCKER == "false" ]]; then
-    skip "the test was running outside of ICP cluster, skip the ClusterIP verification"
-  fi
+  # Get the ClusterIP
+  clusterip=$(kube get svc -l run=http,test=service,type=clusterip -o jsonpath='{.items[0].spec.clusterIP}')
 
-  cluster_ip=$($KUBECTL get service nginx --namespace=${NAMESPACE} --no-headers -o jsonpath='{.spec.clusterIP}')
 
-  port=$($KUBECTL get service nginx --namespace=${NAMESPACE} --no-headers -o jsonpath='{.spec.ports[0].port}')
+  # Create a pod to test connectivity using the toolbox image
+  kube run httpclient --labels='run=http,test=service,type=client' --replicas=1 --image=${TOOLBOX_IMAGE_WGET} -- sleep 10m
+  assert_and_continue 'wait_for -t 120 -c "kube get pods -l run=http,test=service,type=client" -o "Running"'
 
-  #Verify the service
-  response_code=$(curl --connect-timeout 5 -s -w "%{http_code}" http://$cluster_ip:$port -o /dev/null)
+  # Attempt to wget the serviceip. wget will exit 0 on success, else > 0, which will be returned by kubectl
+  run kube exec -it $(kube get pods -l run=http,test=service,type=client -o jsonpath='{.items[0].metadata.name}') -- wget ${clusterip}
 
-  [[ $response_code == '200' ]]
+  # Validate that wget returned success
+  assert_and_continue '[[ $status -eq 0 ]]'
 }
 
 @test "Service Create | Create service with NodePort" {
-  #Create the service with NodePort
-  $KUBECTL apply -f $sert_bats_workdir/suites/01-kubernetes/template/service/service-nodePort.yaml --namespace=${NAMESPACE}
 
-  service_number=$($KUBECTL get service -lrun=nginx --namespace=${NAMESPACE} --no-headers | wc -l | sed 's/^ *//')
+  # if [[ "${NODEPORT}" == "disabled" ]]; then
+  #   skip "NodePort not enabled in this environment"
+  # fi
 
-  [[ $service_number -eq 1 ]]
+  # Generally we won't do this in environments that support external loadbalancer
+  if [[ "${RUN_LB_TEST}" == "true" ]]; then
+    skip "Environment supports loadbalancer, will test that instead"
+  fi
+
+  # Expose nodeport
+  kube expose deployment httpserver --selector='run=http,test=service,type=server' -l run=http,test=service,type=nodeport --type="NodePort" --port=80 --name="httpservernodeport"
+
+  # Validate that a nodeport has been assigned
+  nodeport=$(kube get svc -l run=http,test=service,type=nodeport -o jsonpath='{.items[0].spec.ports[0].nodePort}')
+
+  assert_and_continue "[[ $nodeport -gt 0 ]]"
+
 }
 
 @test "Service Create | Verify the service with NodePort" {
 
-  skip "Need to rewrite this test"
-
-  get_master_ip
-
-  node_port=$($KUBECTL get service nginx --namespace=${NAMESPACE} --no-headers -o jsonpath='{.spec.ports[0].nodePort}')
-
-  #Verify the service
-  response_code=$(curl --connect-timeout 5 -s -w "%{http_code}" http://$master_ip:$node_port -o /dev/null)
-
-  [[ $response_code == '200' ]]
-}
-
-@test "Service Expose | Expose service with ClusterIP" {
-  #Clean up the service
-  $KUBECTL delete service -lrun=nginx -n ${NAMESPACE} --ignore-not-found
-
-  #Expose the service with ClusterIP
-  $KUBECTL expose deployment nginx --port=80 --target-port=80  --name=nginx --type=ClusterIP --namespace=${NAMESPACE}
-
-  service_number=$($KUBECTL get service -lrun=nginx --namespace=${NAMESPACE} --no-headers | wc -l | sed 's/^ *//')
-
-  [[ $service_number -eq 1 ]]
-}
-
-@test "Service Expose | Verify the Exposed service with ClusterIP" {
-
-  if [[ $in_cluster == "false" && $IN_DOCKER == "false" ]]; then
-    skip "the test was running outside of ICP cluster, skip the ClusterIP verification"
+  if [[ "${NODEPORT}" == "disabled" ]]; then
+    skip "NodePort not enabled in this environment"
   fi
 
-  cluster_ip=$($KUBECTL get service nginx --namespace=${NAMESPACE} --no-headers -o jsonpath='{.spec.clusterIP}')
+  # Generally we won't do this in environments that support external loadbalancer
+  if [[ "${RUN_LB_TEST}" == "true" ]]; then
+    skip "Environment supports loadbalancer, will test that instead"
+  fi
 
-  port=$($KUBECTL get service nginx --namespace=${NAMESPACE} --no-headers -o jsonpath='{.spec.ports[0].port}')
+  # Get the nodeport
+  nodeport=$(kube get svc -l run=http,test=service,type=nodeport -o jsonpath='{.items[0].spec.ports[0].nodePort}')
 
-  #Verify the service
-  response_code=$(curl --connect-timeout 5 -s -w "%{http_code}" http://$cluster_ip:$port -o /dev/null)
+  # Attempt to connect to it
+  response_code=$(curl --connect-timeout 5 -s -w "%{http_code}" http://$PROXY_ADDRESS:$nodeport -o /dev/null)
 
-  [[ $response_code == '200' ]]
-}
+  assert_and_continue '[[ $response_code -eq 200 ]]'
 
-@test "Service Expose | Expose service with NodePort" {
-  #Clean up the service
-  $KUBECTL delete service -lrun=nginx --ignore-not-found -n ${NAMESPACE}
-
-  #Expose the service with NodePort
-  $KUBECTL expose deployment nginx --port=80 --target-port=80  --name=nginx --namespace=${NAMESPACE} --type=NodePort
-
-  service_number=$($KUBECTL get service -lrun=nginx --namespace=${NAMESPACE} --no-headers | wc -l | sed 's/^ *//')
-
-  [[ $service_number -eq 1 ]]
-}
-
-@test "Service Expose | Verify the Exposed service with NodePort" {
-
-  skip "Need to rewrite this test"
-
-  get_master_ip
-  node_port=$($KUBECTL get service nginx --namespace=${NAMESPACE} --no-headers -o jsonpath='{.spec.ports[0].nodePort}')
-  #Verify the service
-  response_code=$(curl --connect-timeout 5 -s -w "%{http_code}" http://$master_ip:$node_port -o /dev/null)
-
-  [[ $response_code == '200' ]]
 }
 
 @test "Service Loadbalance | loadbalancer receives external IP" {
-  if [[ "${RUN_TEST}" != "true" ]]; then
+  if [[ "${RUN_LB_TEST}" != "true" ]]; then
       skip "Not in supported cloud, skip loadbalancer validation"
   fi
 
-  lb=$($KUBECTL --namespace=${NAMESPACE} get svc -l run=nginx,test=loadbalancer --no-headers | awk '{print $4}')
+  lb=$(kube get svc -l run=http,test=service,type=loadbalancer --no-headers | awk '{print $4}')
   [[ "$lb" != "<pending>" || "$lb" != "" ]]
 }
 
 @test "Service Loadbalance | loadbalancer is accessible" {
-  if [[ "${RUN_TEST}" != "true" ]]; then
+  if [[ "${RUN_LB_TEST}" != "true" ]]; then
       skip "Not in supported cloud, skip loadbalancer validation"
   fi
 
-  lb=$($KUBECTL --namespace=${NAMESPACE} get svc -l run=nginx,test=loadbalancer --no-headers | awk '{print $4}')
+  lb=$(kube get svc -l run=http,test=service,type=loadbalancer --no-headers | awk '{print $4}')
   run curl -I http://$lb
   [[ "$status" = 0 ]]
   [[ "${output}" =~ "200 OK" ]]

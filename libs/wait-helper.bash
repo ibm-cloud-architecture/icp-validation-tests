@@ -94,3 +94,7 @@ function wait_for() {
     return 1
   fi
 }
+
+# This enables the functions to be wrapped in other functions like the assert functions
+export -f wait_for
+export -f _call_cmd
