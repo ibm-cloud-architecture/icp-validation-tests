@@ -5,15 +5,16 @@ export ON_SETUP_FAIL=${ON_SETUP_FAIL:-failfirst}
 export ROTATE_NAMESPACE=${ROTATE_NAMESPACE:-false}
 export ON_ASSERT_FAIL=${ON_ASSERT_FAIL:-skip_subsequent}
 
+_tmp=${BATS_TMPDIR}/${BATS_TEST_DIRNAME##*/}${BATS_TEST_FILENAME##*/}
+
 function setup() {
-  tmp=${BATS_TMPDIR}/${BATS_TEST_DIRNAME##*/}${BATS_TEST_FILENAME##*/}
   if [[ ${BATS_TEST_NUMBER} -eq 1 ]]; then
 
     # First check if we're applicable
     if type -t applicable >/dev/null ; then
       if ! applicable ; then
         # Set applicability skip
-        touch ${tmp}-applicable.skip
+        touch ${_tmp}-applicable.skip
         skip "Not applicable in this environment"
       fi
     fi
@@ -25,20 +26,20 @@ function setup() {
         case "${ON_SETUP_FAIL}" in
           skip)
             # Skip all tests in this case
-            touch ${tmp}-setup.skip
+            touch ${_tmp}-setup.skip
             ;;
           fail)
             # Fail all tests in this case
-            touch ${tmp}-setup.fail
+            touch ${_tmp}-setup.fail
             ;;
           failfirst)
             # Skip all subsequent tests in this case
-            touch ${tmp}-setup.skip
+            touch ${_tmp}-setup.skip
             echo "Environment setup failed" >&2
             return 1
             ;;
           *)
-            echo "Unknown value '${ON_SETUP_FAIL}' for ON_SETUP_FAIL" > ${tmp}-system.fail
+            echo "Unknown value '${ON_SETUP_FAIL}' for ON_SETUP_FAIL" > ${_tmp}-system.fail
             return 1
             ;;
         esac
@@ -58,20 +59,20 @@ function setup() {
         case "${ON_SETUP_FAIL}" in
           skip)
             # Skip all tests in this case
-            touch ${tmp}-setup.skip
+            touch ${_tmp}-setup.skip
             ;;
           fail)
             # Fail all tests in this case
-            touch ${tmp}-setup.fail
+            touch ${_tmp}-setup.fail
             ;;
           failfirst)
             # Skip all subsequent tests in this case
-            touch ${tmp}-setup.skip
+            touch ${_tmp}-setup.skip
             echo "Timed out waiting for environment to become ready" >&2
             return 1
             ;;
           *)
-            echo "Unknown value '${ON_SETUP_FAIL}' for ON_SETUP_FAIL" > ${tmp}-system.fail
+            echo "Unknown value '${ON_SETUP_FAIL}' for ON_SETUP_FAIL" > ${_tmp}-system.fail
             return 1
             ;;
         esac
@@ -85,33 +86,33 @@ function setup() {
 
 
   # Now test if we're applicable
-  if [[ -e ${tmp}-applicable.skip ]]; then
+  if [[ -e ${_tmp}-applicable.skip ]]; then
     skip "Not applicable in this environment"
   fi
 
   # And test if we should skip of fail because of prereqs
-  if [[ -e ${tmp}-setup.skip ]]; then
+  if [[ -e ${_tmp}-setup.skip ]]; then
     skip "Environment setup failed"
   fi
 
-  if [[ -e ${tmp}-setup.fail ]]; then
+  if [[ -e ${_tmp}-setup.fail ]]; then
     echo "Environment setup failed" >&2
     return 1
   fi
 
   # Check for systemic problems with the framework
-  if [[ -e ${tmp}-system.fail ]]; then
-    cat ${tmp}-system.fail >&2
+  if [[ -e ${_tmp}-system.fail ]]; then
+    cat ${_tmp}-system.fail >&2
     return 1
   fi
 
   # Check if we should skip of fail because of previous tests in the file
-  if [[ -e ${tmp}-subsequent.fail ]]; then
+  if [[ -e ${_tmp}-subsequent.fail ]]; then
     echo "Not testing because previous test failure" >&2
     return 1
   fi
 
-  if [[ -e ${tmp}-subsequent.skip ]]; then
+  if [[ -e ${_tmp}-subsequent.skip ]]; then
     skip "Previous tests failed"
   fi
 }
@@ -127,21 +128,21 @@ function teardown() {
       case "${ROTATE_NAMESPACE}" in
         on_setup_fail)
           # Detect if we have failed setup
-          if [[ -e ${tmp}-setup.fail || -e ${tmp}-setup.skip ]]; then
+          if [[ -e ${_tmp}-setup.fail || -e ${_tmp}-setup.skip ]]; then
             rotate_namespace
             _skip_destroy="true"
           fi
           ;;
         on_test_fail)
           # Detect if we have failed a test case
-          if [[ -e ${tmp}-subsequent.fail || -e ${tmp}-subsequent.skip ]]; then
+          if [[ -e ${_tmp}-subsequent.fail || -e ${_tmp}-subsequent.skip || ${_tmp}-assert.fail ]]; then
             rotate_namespace
             _skip_destroy="true"
           fi
           ;;
         on_any_fail)
           # Detect if we have failed or skipped
-          if [[ -e ${tmp}-setup.fail || -e ${tmp}-setup.skip ||  -e ${tmp}-subsequent.fail || -e ${tmp}-subsequent.skip ]]; then
+          if [[ -e ${_tmp}-setup.fail || -e ${_tmp}-setup.skip ||  -e ${_tmp}-subsequent.fail || -e ${_tmp}-subsequent.skip || -e ${_tmp}-assert.fail ]]; then
             rotate_namespace
             echo "we rotated namspace" >> /tmp/debug.log
             _skip_destroy="true"
@@ -151,9 +152,9 @@ function teardown() {
     fi
 
     # clean up tmp files
-    files=( "${tmp}-setup.skip" "${tmp}-setup.fail" "${tmp}-system.skip" \
-            "${tmp}-system.fail" "${tmp}-subsequent.skip" "${tmp}-subsequent.fail" \
-            "${tmp}-applicable.skip" )
+    files=( "${_tmp}-setup.skip" "${_tmp}-setup.fail" "${_tmp}-system.skip" \
+            "${_tmp}-system.fail" "${_tmp}-subsequent.skip" "${_tmp}-subsequent.fail" \
+            "${_tmp}-applicable.skip" "${_tmp}-assert.fail" )
     for file in ${files[*]}; do
       if [[ -e ${file} ]]; then
         rm ${file}
@@ -161,7 +162,6 @@ function teardown() {
     done
 
     if [[ $(type -t destroy_environment) && ! "$_skip_destroy" == "true" ]]; then
-      echo "we destroy environment" >> /tmp/debug.log
       destroy_environment
     fi
 
@@ -169,11 +169,11 @@ function teardown() {
 }
 
 function skip_subsequent() {
-  touch ${tmp}-subsequent.skip
+  touch ${_tmp}-subsequent.skip
 }
 
 function fail_subsequent() {
-  touch ${tmp}-subsequent.fail
+  touch ${_tmp}-subsequent.fail
 }
 
 function assert_or_bail() {
@@ -183,6 +183,16 @@ function assert_or_bail() {
     if type -t "${ON_ASSERT_FAIL}" >/dev/null; then
       ${ON_ASSERT_FAIL}
     fi
+    echo "$@ failed assertion" >&2
+    return 1
+  fi
+}
+
+function assert_and_continue() {
+  if bash -c "$@" ; then
+    return 0
+  else
+    touch ${_tmp}-assert.fail
     echo "$@ failed assertion" >&2
     return 1
   fi
